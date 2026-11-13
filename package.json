@@ -1,0 +1,42 @@
+{
+  "name": "canal-mix",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "next build",
+    "start": "next start --hostname 127.0.0.1",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "node --import tsx --test tests/unit/*.test.ts",
+    "test:e2e": "playwright test",
+    "supabase:start": "supabase start --network-id canal-mix-local --exclude realtime,storage-api,imgproxy,edge-runtime,logflare,vector,supavisor",
+    "supabase:stop": "supabase stop --network-id canal-mix-local",
+    "supabase:reset": "supabase db reset --network-id canal-mix-local",
+    "supabase:env": "node scripts/local-supabase.cjs --sync-env",
+    "admin:provision": "node scripts/provision-admin.mjs"
+  },
+  "dependencies": {
+    "@fontsource/inter": "5.3.0",
+    "@fontsource/manrope": "5.3.0",
+    "@supabase/ssr": "0.12.7",
+    "@supabase/supabase-js": "2.119.0",
+    "lucide-react": "1.70.0",
+    "next": "16.4.5",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.0",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.5",
+    "supabase": "3.0.0",
+    "tsx": "4.21.0",
+    "typescript": "^5"
+  }
+}

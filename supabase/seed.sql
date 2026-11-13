@@ -1,0 +1,1 @@
+-- As categorias fixas estão na migration inicial. Não há canais fictícios persistentes.
