@@ -18,7 +18,6 @@ export function YouTubeEmbedFrame({
   src,
   frameRef,
   title,
-  sandbox,
   referrerPolicy,
   muted,
   onMutedChange,
@@ -27,7 +26,6 @@ export function YouTubeEmbedFrame({
   src: string;
   frameRef: RefObject<HTMLIFrameElement | null>;
   title: string;
-  sandbox: string | null | undefined;
   referrerPolicy: EmbedReferrerPolicy;
   muted: boolean;
   onMutedChange(muted: boolean): void;
@@ -162,9 +160,6 @@ export function YouTubeEmbedFrame({
       frameRef={frameRef}
       src={enableYouTubeApi(src)}
       title={title}
-      sandbox={sandbox}
-      allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-      allowFullScreen
       referrerPolicy={referrerPolicy}
     />
   );

@@ -1,38 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createElement } from "react";
+import { createElement, type ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { EmbedFrame } from "@/components/embed-frame";
 import {
-  DEFAULT_EMBED_SANDBOX,
   DEFAULT_EMBED_REFERRER_POLICY,
   resolveEmbedReferrerPolicy,
-  resolveEmbedSandbox,
-  type EmbedProviderOverrides,
 } from "@/lib/embed-provider-policy-core";
 
-const providerOverrides = {
-  "player.approved.test": ["allow-forms"],
-  "limited.approved.test": ["allow-scripts"],
-  "strict.approved.test": [],
-} satisfies EmbedProviderOverrides;
 const referrerOverrides = {
   "v1.rdembed.lat": "no-referrer",
 } as const;
 
-test("omite o sandbox por padrão, inclusive para RD Embed e hosts futuros", () => {
-  assert.equal(DEFAULT_EMBED_SANDBOX, null);
-  assert.equal(
-    resolveEmbedSandbox("https://v1.rdembed.lat/globomg", providerOverrides),
-    null,
-  );
-  assert.equal(
-    resolveEmbedSandbox("https://future-provider.test/embed", providerOverrides),
-    null,
-  );
-});
-
-test("omite o Referer somente para RD Embed", () => {
+test("omits the Referer only for RD Embed", () => {
   assert.equal(
     resolveEmbedReferrerPolicy(
       "https://v1.rdembed.lat/globomg",
@@ -56,47 +36,20 @@ test("omite o Referer somente para RD Embed", () => {
   );
 });
 
-test("aplica permissões específicas somente ao host exato", () => {
-  assert.equal(
-    resolveEmbedSandbox("https://player.approved.test/embed", providerOverrides),
-    "allow-forms",
-  );
-  assert.equal(
-    resolveEmbedSandbox(
-      "https://sub.player.approved.test/embed",
-      providerOverrides,
-    ),
-    null,
-  );
-});
-
-test("distingue sandbox vazio de atributo omitido", () => {
-  assert.equal(
-    resolveEmbedSandbox("https://strict.approved.test/embed", providerOverrides),
-    "",
-  );
-  assert.equal(
-    resolveEmbedSandbox("https://limited.approved.test/embed", providerOverrides),
-    "allow-scripts",
-  );
-});
-
-test("renderiza sandbox vazio e omissão como configurações diferentes", () => {
-  const attributes = {
+test("renders embeds without sandbox and keeps CanalMix playback permissions", () => {
+  const hostileProps = {
     src: "https://player.example.test/embed",
     title: "Player de teste",
-  };
-  const emptySandbox = renderToStaticMarkup(
-    createElement(EmbedFrame, { ...attributes, sandbox: "" }),
-  );
-  const omittedSandbox = renderToStaticMarkup(
-    createElement(EmbedFrame, { ...attributes, sandbox: null }),
-  );
-  const defaultSandbox = renderToStaticMarkup(
-    createElement(EmbedFrame, attributes),
-  );
+    sandbox: "allow-scripts",
+    allow: "autoplay; popups; top-navigation",
+    allowFullScreen: false,
+  } as unknown as ComponentProps<typeof EmbedFrame>;
+  const markup = renderToStaticMarkup(createElement(EmbedFrame, hostileProps));
 
-  assert.match(emptySandbox, /sandbox=""/);
-  assert.doesNotMatch(omittedSandbox, /sandbox=/);
-  assert.doesNotMatch(defaultSandbox, /sandbox=/);
+  assert.doesNotMatch(markup, /\s+sandbox(?:=|\s|>)/i);
+  assert.match(
+    markup,
+    /allow="autoplay; encrypted-media; picture-in-picture; fullscreen"/,
+  );
+  assert.match(markup, /allowfullscreen(?:="")?/i);
 });

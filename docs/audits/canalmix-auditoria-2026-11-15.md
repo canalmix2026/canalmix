@@ -1,0 +1,443 @@
+# Auditoria de reprodução do CanalMix — 15/11/2026
+
+## Escopo e método
+
+- Inventário público: 387 canais e 1393 opções (296 HLS direto e 1097 iframe/embed). Nenhuma fonte foi ocultada ou removida.
+- HLS: Chrome Android emulado (Pixel 5, Playwright/Chromium em Windows). A reprodução foi considerada confirmada somente quando o vídeo avançou e apresentou quadro; também foram registrados erros do player e respostas HTTP da playlist, variante, primeiro segmento e chave quando declarada.
+- Embed: mesmo navegador emulado. “Reprodução confirmada” exige observação de reprodução; por política de mesma origem, a maioria dos players de terceiros não expõe o estado de mídia. Um iframe carregado fica como “Não testada” quando não foi possível observar vídeo/avanço.
+- URLs completas das fontes e credenciais foram excluídas; a planilha registra o host da fonte e valores CORS normalizados.
+
+## Resultado geral
+
+| Resultado | Opções |
+| --- | ---: |
+| Reprodução confirmada | 307 |
+| Falhou | 43 |
+| Não testada | 1043 |
+| Total | 1393 |
+
+### HLS
+
+- 256 confirmadas, 39 falharam e 1 não testada, de 296 opções.
+- Erros do player observados primeiro: network:manifestLoadError (18); http-404 (8); media-element-3 (9); http-403 (1); media:fragParsingError (2); media:bufferAppendError (1).
+- Erros HTTP nos recursos: lista principal: HTTP 404 (12); lista principal: HTTP 403 (1); primeiro segmento: HTTP 404 (8); lista principal: HTTP 502 (6). Inclui 12 manifests 404, 6 manifests 502, 1 manifest 403 e 8 primeiros segmentos 404.
+- Nas listas testadas não foi encontrado HTTP misto nem problema CORS em manifest de resposta bem-sucedida. Uma playlist declarou `METHOD=NONE`; não houve chave criptográfica a buscar nos casos auditados. O relatório não classifica uma playlist 200 como reprodução confirmada.
+- Bloqueio de autoplay: nenhum `NotAllowedError` observado. Há uma opção sem avanço mesmo após tentativa manual; veja a linha `NSports`, opção 2, no CSV.
+
+### Iframe/embed
+
+- 1079 iframes carregaram; 18 não completaram navegação verificável.
+- 51 reproduções confirmadas, 4 falhas e 1042 sem reprodução observável. Entre as falhas: dois HTTP 522, um HTTP 404 e um `net::ERR_ABORTED`.
+- Zero mensagens explícitas de bloqueio do provedor foram detectadas. Os embeds cross-origin que carregaram, mas não expuseram vídeo/estado, permanecem “Não testada”, não “confirmada”.
+
+## Correção e validação do componente
+
+- O player compartilhado usa `hls.js` em navegadores sem HLS gerenciado nativamente; limpa/destroi a instância anterior ao trocar de fonte e evita que callbacks antigos alterem a nova reprodução. Quando `ManagedMediaSource` está disponível, permite HLS nativo. A documentação do hls.js alerta que `canPlayType()` sozinho pode indicar suporte sem assegurar reprodução real: https://github.com/video-dev/hls.js/blob/master/README.md.
+- Comparação com stream HLS funcional: Chrome Android emulado reproduziu no site, ao trocar para opção HLS, após “Atualizar player” e no Modo TV; o tempo avançou e o quadro apareceu. As opções confirmadas/falhas por fonte estão na planilha.
+- Verificação adicional depois do deploy, no domínio público com Chrome Android emulado: Movie Sphere #2, Rede Vida #1 e A Bola #1 reproduziram (10,5 s/1920 px; 52,4 s/1280 px; 13,1 s/1280 px). Autoplay iniciou sem erro e as respostas CORS aceitaram a origem pública ou `*`.
+- Safari/WebKit simulado no Windows retornou `hls-unsupported` antes de requisitar a fonte. Isso limita o ambiente de teste e não conclui que o Safari físico falha; precisa ser testado em um iPhone real.
+- Validações do checkout isolado usado no deploy: typecheck, lint, 11 testes unitários, 9 testes E2E e build de produção passaram.
+
+## Publicação e arquivos
+
+- Deploy de produção concluído e respondendo HTTP 200: https://canal-mix.vercel.app/ (deploy: https://canal-8suex2o6n-canalmix.vercel.app/).
+- Correção publicada: `src/components/channel-player.tsx`, `src/components/hls-video-player.tsx`, `src/app/globals.css`, `package.json`, `package-lock.json`, `.vercelignore` e teste E2E `tests/e2e/canal-flow.spec.ts`.
+- Relatório detalhado: `canalmix-auditoria-2026-11-15.csv` nesta pasta. Cada linha informa canal, opção, tipo, ambiente, resultado, host sem URL, estado HTTP dos recursos HLS e primeiro erro observado.
+- O deploy foi feito de um checkout isolado em `origin/main` com apenas a correção do player e seu teste. As demais alterações locais não foram incluídas.
+
+## Próximos testes em dispositivos físicos
+
+1. No Android do seu irmão, abrir a versão pública em Chrome atualizado (fora de navegador embutido), testar primeiro uma opção marcada “Reprodução confirmada” na planilha e conferir avanço do tempo/quadro; tocar Play manualmente se o autoplay não iniciar.
+2. Testar uma opção marcada “Falhou” e comparar com uma confirmada. Registrar canal/opção, Android, versão do Chrome e primeiro erro visível; várias falhas listadas são HTTP 403/404/502 ou erro de decodificação da própria fonte/provedor.
+3. Testar a mesma opção confirmada no iPhone/Safari físico para substituir a limitação do WebKit emulado no Windows.
+4. Testar embeds individualmente no navegador físico; a auditoria automatizada não consegue observar o estado da mídia dentro da maioria dos iframes cross-origin.
+
+## Inventário por canal
+
+- **20 Mediaset** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **3sat** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **A Bola** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **A Fazenda 1** — 2 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada
+- **A Fazenda 2** — 2 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada
+- **A Fazenda 3** — 2 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada
+- **A Fazenda 4** — 2 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada
+- **A Fazenda 5** — 2 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada
+- **A&E** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Falhou
+- **Adult Swim** — 3 opção(ões): #1 HLS — Falhou; #2 embed — Não testada; #3 embed — Não testada
+- **Agro Canal** — 1 opção(ões): #1 embed — Não testada
+- **AGRO+** — 2 opção(ões): #1 embed — Não testada; #2 embed — Não testada
+- **AMC** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Animal Planet** — 4 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada
+- **Antena 3 ES** — 3 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada
+- **Arte DE** — 4 opção(ões): #1 embed — Não testada; #2 embed — Falhou; #3 embed — Não testada; #4 embed — Não testada
+- **Arte1** — 2 opção(ões): #1 embed — Não testada; #2 embed — Não testada
+- **Automoto La chaîne** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **AXN** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Azteca 7** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Azteca Uno** — 3 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada
+- **Band** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 HLS — Reprodução confirmada
+- **Band News** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Falhou; #5 embed — Não testada
+- **Band RJ** — 2 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada
+- **Band SP** — 2 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada
+- **Band Sports** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Barça TV** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **BBC 1 UK** — 6 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada; #6 embed — Não testada
+- **BBC 2 UK** — 6 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada; #6 embed — Não testada
+- **BBC 3 UK** — 1 opção(ões): #1 embed — Não testada
+- **BBC 4 UK** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **beIN SPORTS 1 FR** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **beIN SPORTS 2 FR** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **beIN SPORTS 3 FR** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **BeIN Sports Español** — 1 opção(ões): #1 embed — Não testada
+- **beIN Sports MAX 10 FR** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **beIN Sports MAX 4 FR** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **beIN Sports MAX 5 FR** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **beIN Sports MAX 6 FR** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **beIN Sports MAX 7 FR** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **beIN Sports MAX 8 FR** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **beIN Sports MAX 9 FR** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **BeIN Sports Xtra Español US** — 1 opção(ões): #1 embed — Não testada
+- **Benfica TV** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **BIS** — 2 opção(ões): #1 embed — Não testada; #2 embed — Não testada
+- **BR Fernsehen** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Canal 11** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **Canal Brasil** — 2 opção(ões): #1 embed — Reprodução confirmada; #2 embed — Não testada
+- **Canal Goat** — 1 opção(ões): #1 HLS — Reprodução confirmada
+- **Canal OFF** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Reprodução confirmada; #5 embed — Não testada
+- **Canal+ Foot FR** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Canal+ FR** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Canal+ Sport 360 FR** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Canal+ Sport FR** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Canal5 MX** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Canção Nova** — 2 opção(ões): #2 HLS — Falhou; #1 embed — Não testada
+- **Cartoon Network** — 4 opção(ões): #1 HLS — Falhou; #2 HLS — Falhou; #3 embed — Não testada; #4 embed — Não testada
+- **Cartoonito** — 4 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada
+- **Cazé TV 1** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Reprodução confirmada
+- **Cazé TV 2** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Reprodução confirmada; #5 embed — Não testada
+- **Cazé Tv 3** — 5 opção(ões): #1 HLS — Falhou; #2 HLS — Falhou; #3 embed — Não testada; #4 embed — Reprodução confirmada; #5 embed — Reprodução confirmada
+- **Channel 4 UK** — 3 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada
+- **Channel 5 UK** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Chaves 24h** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **Cinemax** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Claro Sports MX** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Classique Faroeste** — 1 opção(ões): #1 HLS — Reprodução confirmada
+- **CNN Brasil** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Reprodução confirmada; #5 embed — Não testada
+- **Combate** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Reprodução confirmada; #5 embed — Reprodução confirmada
+- **Cuatro** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Curta!** — 2 opção(ões): #1 embed — Não testada; #2 embed — Reprodução confirmada
+- **DAZN** — 1 opção(ões): #1 embed — Não testada
+- **DAZN 1 DE** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **DAZN 1 ES** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **DAZN 1 UK** — 3 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada
+- **DAZN 2 DE** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **DAZN 2 ES** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **DAZN 3 ES** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **DAZN 4 ES** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **DAZN LaLiga** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **DAZN Ligue 1 FR** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Deportes 2 por M+** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Deportes 3 por M+** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Deportes 4 por M+** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Deportes por M+** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Discovery Channel** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Discovery Home e Health** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Discovery ID** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Reprodução confirmada; #5 embed — Não testada
+- **Discovery Kids** — 4 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada
+- **Discovery Science** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Reprodução confirmada; #5 embed — Não testada
+- **Discovery Theater** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Falhou; #3 embed — Não testada; #4 embed — Reprodução confirmada; #5 embed — Não testada
+- **Discovery Turbo** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Reprodução confirmada; #5 embed — Não testada
+- **Discovery World** — 5 opção(ões): #2 HLS — Reprodução confirmada; #1 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Disney+ 1** — 2 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada
+- **Disney+ 2** — 4 opção(ões): #1 HLS — Falhou; #2 HLS — Falhou; #3 embed — Não testada; #4 embed — Não testada
+- **Disney+ 3** — 4 opção(ões): #1 HLS — Falhou; #2 HLS — Falhou; #3 embed — Não testada; #4 embed — Não testada
+- **Disney+ 4** — 1 opção(ões): #1 embed — Não testada
+- **Disney+ 5** — 1 opção(ões): #1 embed — Não testada
+- **Disney+ 6** — 1 opção(ões): #1 embed — Não testada
+- **Disney+ 7** — 1 opção(ões): #1 embed — Não testada
+- **Disney+ 8** — 1 opção(ões): #1 embed — Não testada
+- **Dragon Ball Z 24h** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **Dreamworks** — 2 opção(ões): #1 HLS — Reprodução confirmada; #2 embed — Não testada
+- **DSports** — 3 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada
+- **DSports 2** — 3 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada
+- **DSports Plus** — 3 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada
+- **E!** — 2 opção(ões): #1 embed — Não testada; #2 embed — Não testada
+- **ECDF LigaPro** — 1 opção(ões): #1 embed — Não testada
+- **Eleven 1** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **Eleven 2** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **Eleven 3** — 2 opção(ões): #1 HLS — Reprodução confirmada; #2 embed — Não testada
+- **ESPN** — 4 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada
+- **ESPN 1 AR** — 3 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada
+- **ESPN 1 MX** — 6 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada; #6 embed — Não testada
+- **ESPN 2** — 4 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada
+- **ESPN 2 AR** — 3 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada
+- **ESPN 2 MX** — 6 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada; #6 embed — Não testada
+- **ESPN 3** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **ESPN 3 AR** — 3 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada
+- **ESPN 3 MX** — 6 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada; #6 embed — Não testada
+- **ESPN 4** — 4 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada
+- **ESPN 4 AR** — 3 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada
+- **ESPN 4 MX** — 6 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada; #6 embed — Não testada
+- **ESPN 5** — 4 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada
+- **ESPN 5 AR** — 3 opção(ões): #1 embed — Não testada; #2 embed — Reprodução confirmada; #3 embed — Não testada
+- **ESPN 6** — 4 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada
+- **ESPN 6 AR** — 3 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada
+- **ESPN 7 AR** — 3 opção(ões): #1 embed — Não testada; #2 embed — Reprodução confirmada; #3 embed — Não testada
+- **ESPN Deportes US** — 3 opção(ões): #1 HLS — Falhou; #2 embed — Não testada; #3 embed — Não testada
+- **ESPN Premium AR** — 3 opção(ões): #1 embed — Não testada; #2 embed — Reprodução confirmada; #3 embed — Não testada
+- **EuroSport 1 ES** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Eurosport 1 FR** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **EuroSport 1 IT** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **EuroSport 2 ES** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Eurosport 2 FR** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **EuroSport 2 IT** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Fashion TV** — 2 opção(ões): #1 embed — Não testada; #2 embed — Não testada
+- **Fish TV** — 3 opção(ões): #3 HLS — Falhou; #1 embed — Não testada; #2 embed — Não testada
+- **Food Network** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Fox Deportes US** — 1 opção(ões): #1 embed — Não testada
+- **Fox ONE 1 MX** — 1 opção(ões): #1 embed — Não testada
+- **Fox Sports 1 MX** — 6 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada; #6 embed — Não testada
+- **Fox Sports 1 US** — 1 opção(ões): #1 embed — Não testada
+- **Fox Sports 2 MX** — 6 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada; #6 embed — Não testada
+- **Fox Sports 2 US** — 1 opção(ões): #1 embed — Não testada
+- **Fox Sports 3 AR** — 1 opção(ões): #1 embed — Não testada
+- **Fox Sports 3 MX** — 6 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada; #6 embed — Não testada
+- **Fox Sports Premium MX** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **France 2** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **France 3** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **France 4** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Friends 24h** — 1 opção(ões): #1 embed — Não testada
+- **Futura** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 embed — Não testada; #3 embed — Não testada
+- **GETV** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **Globo AM** — 4 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada
+- **Globo CE** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **Globo DF** — 4 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada
+- **Globo ES** — 4 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada
+- **Globo GO** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Globo MA** — 1 opção(ões): #1 embed — Não testada
+- **Globo MG** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **Globo News** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Reprodução confirmada; #5 embed — Não testada
+- **Globo PB** — 4 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada
+- **Globo RJ** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **Globo RS** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **Globo SP** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **Globoplay Novelas** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **Gloob** — 3 opção(ões): #1 HLS — Falhou; #2 HLS — Falhou; #3 embed — Não testada
+- **Gloobinho** — 2 opção(ões): #1 embed — Reprodução confirmada; #2 embed — Reprodução confirmada
+- **GNT** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Reprodução confirmada; #5 embed — Não testada
+- **Golf por M+** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Gospel Cartoon** — 2 opção(ões): #1 HLS — Reprodução confirmada; #2 embed — Não testada
+- **HBO** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **HBO 2** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **HBO Family** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **HBO Mundi** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **HBO Pop** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Reprodução confirmada
+- **HBO Signature** — 2 opção(ões): #1 embed — Não testada; #2 embed — Não testada
+- **HBO Xtreme** — 5 opção(ões): #2 HLS — Reprodução confirmada; #1 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **HBO+** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **HGTV** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **History** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **History 2** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **ITV 1 UK** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **ITV 2 UK** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **ITV 3 UK** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **ITV 4 UK** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Jovem Pan News** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 embed — Não testada; #3 embed — Não testada
+- **Kabel Eins** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **L'Equipe** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **LaLiga TV por M+** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **LaSexta** — 3 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada
+- **Lifetime** — 2 opção(ões): #1 embed — Não testada; #2 embed — Não testada
+- **Liga1 MAX PE** — 2 opção(ões): #1 embed — Não testada; #2 embed — Não testada
+- **Liverpool TV (LFCTV)** — 4 opção(ões): #3 embed — Não testada; #4 embed — Não testada; #1 embed — Não testada; #2 embed — Não testada
+- **M6** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Magenta Sport 1** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Magenta Sport 2** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Magenta Sport 3** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Magenta Sport 4** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Magenta Sport 5** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Magenta Sport 6** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Magenta Sport 7** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Magenta Sport 8** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Magenta Sport 9** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Manchester United TV (MUTV)** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **MAX 1** — 4 opção(ões): #2 HLS — Falhou; #3 HLS — Falhou; #1 embed — Não testada; #4 embed — Não testada
+- **MAX 2** — 4 opção(ões): #2 HLS — Falhou; #3 HLS — Falhou; #1 embed — Não testada; #4 embed — Não testada
+- **MAX 3** — 4 opção(ões): #2 HLS — Falhou; #3 HLS — Falhou; #1 embed — Não testada; #4 embed — Não testada
+- **MAX 4** — 2 opção(ões): #1 embed — Não testada; #2 embed — Não testada
+- **MAX 5** — 2 opção(ões): #1 embed — Não testada; #2 embed — Não testada
+- **MAX 6** — 1 opção(ões): #1 embed — Não testada
+- **MAX 7** — 1 opção(ões): #1 embed — Não testada
+- **MegaPix** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Modo Viagem** — 3 opção(ões): #1 embed — Reprodução confirmada; #2 embed — Não testada; #3 embed — Não testada
+- **Movie Sphere** — 2 opção(ões): #2 HLS — Reprodução confirmada; #1 embed — Não testada
+- **Movistar Deportes PE** — 1 opção(ões): #1 embed — Não testada
+- **Multishow** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Reprodução confirmada; #5 embed — Não testada
+- **Nickonline** — 1 opção(ões): #1 embed — Não testada
+- **Nicktoons** — 1 opção(ões): #1 HLS — Reprodução confirmada
+- **NSports** — 3 opção(ões): #2 HLS — Não testada; #1 embed — Não testada; #3 embed — Não testada
+- **NSports 2** — 1 opção(ões): #1 embed — Não testada
+- **NSports 3** — 1 opção(ões): #1 embed — Não testada
+- **Os Simpsons 24h** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **Paramount+** — 4 opção(ões): #2 HLS — Reprodução confirmada; #3 HLS — Reprodução confirmada; #1 embed — Reprodução confirmada; #4 embed — Não testada
+- **Paramount+ 2** — 4 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada
+- **Paramount+ 3** — 2 opção(ões): #1 embed — Não testada; #2 embed — Não testada
+- **Paramount+ 4** — 2 opção(ões): #1 embed — Não testada; #2 embed — Não testada
+- **Pica Pau 24h** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **Play TV** — 2 opção(ões): #1 embed — Reprodução confirmada; #2 embed — Não testada
+- **Premier Sports 1 IE** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Premier Sports 2 IE** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Premiere 1** — 6 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Reprodução confirmada; #6 embed — Não testada
+- **Premiere 2** — 6 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Reprodução confirmada; #6 embed — Reprodução confirmada
+- **Premiere 3** — 6 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Reprodução confirmada; #6 embed — Não testada
+- **Premiere 4** — 6 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Reprodução confirmada; #6 embed — Não testada
+- **Premiere 5** — 6 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Reprodução confirmada; #5 embed — Reprodução confirmada; #6 embed — Não testada
+- **Premiere 6** — 6 opção(ões): #1 HLS — Falhou; #2 HLS — Falhou; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Reprodução confirmada; #6 embed — Reprodução confirmada
+- **Premiere 7** — 6 opção(ões): #1 HLS — Falhou; #2 HLS — Falhou; #3 embed — Não testada; #4 embed — Reprodução confirmada; #5 embed — Reprodução confirmada; #6 embed — Reprodução confirmada
+- **Premiere 8** — 6 opção(ões): #1 HLS — Falhou; #2 HLS — Falhou; #3 embed — Não testada; #4 embed — Reprodução confirmada; #5 embed — Reprodução confirmada; #6 embed — Não testada
+- **Prime Box Brazil** — 1 opção(ões): #1 embed — Não testada
+- **Prime Video** — 4 opção(ões): #1 HLS — Falhou; #2 HLS — Falhou; #3 embed — Não testada; #4 embed — Não testada
+- **Prime Video 2** — 4 opção(ões): #1 HLS — Falhou; #2 HLS — Falhou; #3 embed — Não testada; #4 embed — Não testada
+- **Prime Video 3** — 4 opção(ões): #1 HLS — Falhou; #2 HLS — Falhou; #3 embed — Não testada; #4 embed — Não testada
+- **Prime Video 4** — 4 opção(ões): #1 HLS — Falhou; #2 HLS — Falhou; #3 embed — Não testada; #4 embed — Não testada
+- **ProSieben** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Racing Tv** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Rai 1** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Rai 2** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Rai 3** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Rai Premium** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Rai Sport** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Real Madrid TV** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Record** — 2 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada
+- **Record GO** — 2 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada
+- **Record News** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 embed — Não testada; #3 embed — Reprodução confirmada
+- **Record RJ** — 2 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada
+- **Record SP** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Reprodução confirmada
+- **Rede Gospel** — 2 opção(ões): #1 HLS — Reprodução confirmada; #2 embed — Reprodução confirmada
+- **Rede Vida** — 2 opção(ões): #1 HLS — Reprodução confirmada; #2 embed — Não testada
+- **RedeTV** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **Retrô Cartoon** — 2 opção(ões): #1 HLS — Reprodução confirmada; #2 embed — Não testada
+- **RMC Sport 1 FR** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **RMC Sport 2 FR** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **RMC Story FR** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **RTL** — 3 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada
+- **Runtime Ação** — 1 opção(ões): #1 HLS — Reprodução confirmada
+- **S4C UK** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Sabor e Arte** — 1 opção(ões): #1 embed — Não testada
+- **SAT.1** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **SBT** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **SBT News** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 embed — Reprodução confirmada; #3 embed — Não testada
+- **SBT Novelas** — 1 opção(ões): #1 embed — Não testada
+- **SBT RJ** — 1 opção(ões): #1 HLS — Reprodução confirmada
+- **SBT SP** — 2 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada
+- **Sky Calcio 1 (251)** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Sky Calcio 2 (252)** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Sky Calcio 3 (253)** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Sky Calcio 4 (254)** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Sky Sport 1** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Sky Sport 2** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Sky Sport Arena IT** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Sky Sport Basket IT** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Sky Sport Bundesliga 1** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Sky Sport Bundesliga 2** — 3 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada
+- **Sky Sport Bundesliga 3** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Sky Sport Bundesliga 4** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Sky Sport Bundesliga 5** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Sky Sport Calcio** — 4 opção(ões): #4 embed — Não testada; #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada
+- **Sky Sport F1** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Sky Sport F1 IT** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Sky Sport Golf DE** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Sky Sport MAX IT** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Sky Sport Mix** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Sky Sport MotoGP IT** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Sky Sport Tennis IT** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Sky Sport Top Event** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Sky Sport UNO IT** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Sky Sports Action** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Sky Sports Cricket** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Sky Sports F1** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Sky Sports Football** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Sky Sports Golf** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Sky Sports Main Event** — 3 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada
+- **Sky Sports Mix** — 3 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada
+- **Sky Sports News** — 3 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada
+- **Sky Sports Premier League** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Sky Sports Racing** — 3 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada
+- **Sky Sports Tennis** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Sky Sports Tennis DE** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Sky Sports+** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Sony Channel** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Sony Movies** — 2 opção(ões): #1 embed — Não testada; #2 embed — Não testada
+- **Sony One Classics** — 1 opção(ões): #1 embed — Não testada
+- **Space** — 4 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada
+- **SpaceToday 24H** — 1 opção(ões): #1 embed — Não testada
+- **Sport en France** — 3 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada
+- **Sport1** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **SportDigital Fussball** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Sportdigital1+** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **Sporttv 1** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **Sporttv 2** — 2 opção(ões): #1 HLS — Reprodução confirmada; #2 embed — Não testada
+- **Sporttv 3** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **Sporttv 4** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **Sporttv 5** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **Sporttv 6** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **Sporttv 7** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada
+- **Sportv** — 4 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada
+- **Sportv 2** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Sportv 3** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **SportyNet** — 2 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada
+- **SportyNet+ 1** — 2 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada
+- **SPortyNet+ 2** — 2 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada
+- **SportyNet+ 3** — 2 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada
+- **Studio Universal** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Tele Cine Action** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Tele Cine Cult** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Tele Cine Fun** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Tele Cine Pipoca** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Tele Cine Premium** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Tele Cine Touch** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Telecinco** — 3 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada
+- **Teledeporte TDP ES** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Telefe AR** — 2 opção(ões): #1 embed — Não testada; #2 embed — Não testada
+- **Telemundo** — 1 opção(ões): #1 embed — Não testada
+- **Tennis Channel** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Terra Viva** — 1 opção(ões): #1 embed — Não testada
+- **TF1** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **TLC** — 5 opção(ões): #1 HLS — Falhou; #2 HLS — Falhou; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **TMC France** — 3 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada
+- **TNT** — 4 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada
+- **TNT Novelas** — 4 opção(ões): #1 HLS — Falhou; #2 HLS — Falhou; #3 embed — Não testada; #4 embed — Não testada
+- **TNT Series** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **TNT Sports 1 UK** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **TNT Sports 2 UK** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **TNT Sports 3 UK** — 3 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada
+- **TNT Sports 4 UK** — 6 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada; #6 embed — Não testada
+- **TNT Sports AR** — 2 opção(ões): #1 embed — Não testada; #2 embed — Não testada
+- **TNT Sports CL** — 1 opção(ões): #1 embed — Não testada
+- **Todo Mundo Odeia o Cris 24H** — 2 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada
+- **Tooncast** — 1 opção(ões): #1 embed — Não testada
+- **TUDN MX** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **TUDN US** — 1 opção(ões): #1 embed — Não testada
+- **TV Aparecida** — 4 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Reprodução confirmada
+- **Tv Brasil** — 2 opção(ões): #1 embed — Não testada; #2 embed — Não testada
+- **Tv Cultura** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 HLS — Reprodução confirmada
+- **Tv Novo Tempo** — 2 opção(ões): #1 HLS — Reprodução confirmada; #2 embed — Não testada
+- **Tv Pai Eterno** — 3 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 HLS — Reprodução confirmada
+- **Tv Século 21** — 2 opção(ões): #1 embed — Reprodução confirmada; #2 embed — Reprodução confirmada
+- **TVC Deportes MX** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **TVE La 1** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **TVE La 2** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada
+- **TyC Sports AR** — 1 opção(ões): #1 embed — Não testada
+- **U&Dave** — 5 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **UFC Fight Pass** — 4 opção(ões): #2 HLS — Reprodução confirmada; #3 HLS — Reprodução confirmada; #1 embed — Não testada; #4 embed — Não testada
+- **Universal Premiere** — 1 opção(ões): #1 embed — Falhou
+- **Universal Reality** — 1 opção(ões): #1 embed — Não testada
+- **Universal Tv** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Reprodução confirmada; #5 embed — Reprodução confirmada
+- **Universo US** — 1 opção(ões): #1 embed — Reprodução confirmada
+- **Univisión US** — 1 opção(ões): #1 embed — Não testada
+- **USA** — 2 opção(ões): #1 embed — Reprodução confirmada; #2 embed — Não testada
+- **W9** — 3 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada
+- **Warner Tv** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **Win Sports CO** — 2 opção(ões): #1 embed — Não testada; #2 embed — Não testada
+- **Win Sports plus CO** — 2 opção(ões): #1 embed — Não testada; #2 embed — Não testada
+- **XSports** — 5 opção(ões): #1 HLS — Reprodução confirmada; #2 HLS — Reprodução confirmada; #3 embed — Não testada; #4 embed — Não testada; #5 embed — Não testada
+- **ZDF** — 4 opção(ões): #1 embed — Não testada; #2 embed — Não testada; #3 embed — Não testada; #4 embed — Não testada

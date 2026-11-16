@@ -15,13 +15,15 @@
     "supabase:stop": "supabase stop --network-id canal-mix-local",
     "supabase:reset": "supabase db reset --network-id canal-mix-local",
     "supabase:env": "node scripts/local-supabase.cjs --sync-env",
-    "admin:provision": "node scripts/provision-admin.mjs"
+    "admin:provision": "node scripts/provision-admin.mjs",
+    "teams:import-local": "node scripts/import-team-catalog.mjs"
   },
   "dependencies": {
     "@fontsource/inter": "5.3.0",
     "@fontsource/manrope": "5.3.0",
     "@supabase/ssr": "0.12.7",
     "@supabase/supabase-js": "2.119.0",
+    "hls.js": "1.7.4",
     "lucide-react": "1.70.0",
     "next": "16.4.5",
     "react": "19.3.0",

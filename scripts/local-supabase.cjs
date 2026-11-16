@@ -96,6 +96,9 @@ function updateEnvValue(contents, key, value) {
 
 function writeLocalEnv() {
   const status = readLocalSupabaseStatus();
+  if (!status.serviceRoleKey) {
+    throw new Error("Supabase local service role key is missing.");
+  }
   if (!status.publishableKey) {
     throw new Error("O CLI não forneceu a chave pública do Supabase local.");
   }
@@ -114,9 +117,14 @@ function writeLocalEnv() {
     "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
     status.publishableKey,
   );
+  contents = updateEnvValue(
+    contents,
+    "SUPABASE_SERVICE_ROLE_KEY",
+    status.serviceRoleKey,
+  );
   fs.writeFileSync(envPath, contents, "utf8");
   process.stdout.write(
-    "Arquivo .env.local atualizado com a URL e a chave pública locais.\n",
+    "Arquivo .env.local atualizado com a configuração local do Supabase.\n",
   );
 }
 

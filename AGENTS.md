@@ -7,3 +7,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Rotina reutilizável
+
+- Ao receber “Atualize a grade de jogos da semana do CanalMix”, siga as instruções em [docs/atualizar-grade-de-jogos.md](docs/atualizar-grade-de-jogos.md) do início ao fim. Preserve as demais instruções deste arquivo.

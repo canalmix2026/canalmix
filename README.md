@@ -22,12 +22,12 @@ npm run supabase:env
 
 Na primeira inicialização, o Docker baixa as imagens do Supabase. Depois disso, o banco, o login e o Studio rodam na máquina local, em uma rede Docker própria. O Next.js escuta em 127.0.0.1. No desenvolvimento, o app aceita o Supabase local; em produção, aceita somente URLs HTTPS no domínio `*.supabase.co`. O fluxo local não vincula um projeto hospedado.
 
-Observação deste Windows: o Docker Desktop reporta as portas locais do Supabase (55421–55424) como publicadas em todas as interfaces, mesmo com a rede Docker configurada para loopback. O Next.js continua restrito a 127.0.0.1 e nada foi publicado na internet, mas não considere essas portas do Docker isoladas da rede local. Pare o Supabase com `npm run supabase:stop` quando não estiver usando o projeto em uma rede não confiável.
+Observação deste Windows: o Docker Desktop reporta as portas locais do Supabase (55621–55624) como publicadas em todas as interfaces, mesmo com a rede Docker configurada para loopback. O Next.js continua restrito a 127.0.0.1 e nada foi publicado na internet, mas não considere essas portas do Docker isoladas da rede local. Pare o Supabase com `npm run supabase:stop` quando não estiver usando o projeto em uma rede não confiável.
 
-O comando de configuração cria ou atualiza .env.local com o endereço e a chave pública do Supabase local:
+O comando de configuração cria ou atualiza `.env.local` com o endereço, a chave pública e a chave `SUPABASE_SERVICE_ROLE_KEY` do stack local. Essa última chave fica somente no servidor e nunca é enviada ao navegador:
 
 ~~~powershell
-Get-Content .env.local
+Get-Content .env.local | Where-Object { $_ -match '^NEXT_PUBLIC_' }
 ~~~
 
 O arquivo é ignorado pelo Git. O app aceita apenas endereços locais durante o desenvolvimento e URLs HTTPS do Supabase hospedado em produção. A chave `publishable` é pública e pode ser enviada ao navegador; nunca use a chave `service_role` em variáveis `NEXT_PUBLIC_`.
@@ -62,7 +62,7 @@ npm run dev
 - Modo TV: http://127.0.0.1:3000/tv
 - Login administrativo: http://127.0.0.1:3000/admin/login
 - Painel de canais: http://127.0.0.1:3000/admin/canais
-- Supabase Studio local: http://127.0.0.1:55423
+- Supabase Studio local: http://127.0.0.1:55623
 
 O banco começa sem canais fictícios. As sete categorias são criadas pela migration. Use URLs HTTPS de incorporação permitidas pelo provedor; cada provedor decide se permite reprodução em iframe. O player mantém uma mensagem de indisponibilidade e o link oficial, se cadastrado.
 

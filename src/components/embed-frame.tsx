@@ -1,30 +1,29 @@
 import type { IframeHTMLAttributes, Ref } from "react";
-import { DEFAULT_EMBED_SANDBOX } from "@/lib/embed-provider-policy-core";
 
 type EmbedFrameProps = {
   src: string;
   title: string;
-  sandbox?: string | null;
   frameRef?: Ref<HTMLIFrameElement>;
 } & Omit<
   IframeHTMLAttributes<HTMLIFrameElement>,
-  "src" | "title" | "sandbox" | "ref"
+  "src" | "title" | "sandbox" | "allow" | "allowFullScreen" | "ref"
 >;
 
 export function EmbedFrame({
   src,
   title,
-  sandbox = DEFAULT_EMBED_SANDBOX,
   frameRef,
   ...attributes
 }: EmbedFrameProps) {
-  const sandboxAttribute = sandbox === null ? {} : { sandbox };
+  const safeAttributes = { ...attributes } as IframeHTMLAttributes<HTMLIFrameElement>;
+  delete safeAttributes.sandbox;
 
   return (
     <iframe
       ref={frameRef}
-      {...attributes}
-      {...sandboxAttribute}
+      {...safeAttributes}
+      allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+      allowFullScreen
       src={src}
       title={title}
     />

@@ -1,0 +1,1854 @@
+{
+  "date": "2026-11-15",
+  "database": "local Supabase loopback only",
+  "initialImport": {
+    "added": 1903,
+    "updated": 0,
+    "countries": 72,
+    "executedLocally": true
+  },
+  "idempotenceRun": {
+    "added": 0,
+    "updated": 1903,
+    "duplicateImportKeys": 0,
+    "executedLocally": true
+  },
+  "legacyAudit": {
+    "teamsExisting": 26,
+    "teamsClassified": 26,
+    "games": 13,
+    "broadcasts": 24,
+    "gamesWithTextOnlySide": 0,
+    "gameRecordsRelinked": 0,
+    "duplicateTeamIdentities": 0
+  },
+  "crestAudit": {
+    "filled": 8,
+    "preserved": 0,
+    "pendingTotal": 1921,
+    "reviewedAt": "2026-11-15",
+    "details": "8 escudos aprovados após conferência individual; 1.921 seguem pendentes por falta de confirmação da licença ou da versão exata.",
+    "researchFile": "data/team-catalog/shield-image-research-2026-11-15.json",
+    "pendingLegacy": 18
+  },
+  "countries": [
+    {
+      "countryCode": "ZAF",
+      "countryName": "África do Sul",
+      "clubs": 35,
+      "initialRun": {
+        "added": 35,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 35
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 35,
+      "below200": true,
+      "seasonYears": [
+        2024
+      ]
+    },
+    {
+      "countryCode": "ALB",
+      "countryName": "Albânia",
+      "clubs": 10,
+      "initialRun": {
+        "added": 10,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 10
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 10,
+      "below200": true,
+      "seasonYears": [
+        2024
+      ]
+    },
+    {
+      "countryCode": "DEU",
+      "countryName": "Alemanha",
+      "clubs": 164,
+      "initialRun": {
+        "added": 164,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 164
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 164,
+      "below200": true,
+      "seasonYears": [
+        2024,
+        2025,
+        2026
+      ]
+    },
+    {
+      "countryCode": "SAU",
+      "countryName": "Arábia Saudita",
+      "clubs": 18,
+      "initialRun": {
+        "added": 18,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 18
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 18,
+      "below200": true,
+      "seasonYears": [
+        2024
+      ]
+    },
+    {
+      "countryCode": "DZA",
+      "countryName": "Argélia",
+      "clubs": 27,
+      "initialRun": {
+        "added": 27,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 27
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 27,
+      "below200": true,
+      "seasonYears": [
+        2024
+      ]
+    },
+    {
+      "countryCode": "ARG",
+      "countryName": "Argentina",
+      "clubs": 30,
+      "initialRun": {
+        "added": 30,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 30
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 30,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "ARM",
+      "countryName": "Armênia",
+      "clubs": 11,
+      "initialRun": {
+        "added": 11,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 11
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 11,
+      "below200": true,
+      "seasonYears": [
+        2024
+      ]
+    },
+    {
+      "countryCode": "AUS",
+      "countryName": "Austrália",
+      "clubs": 15,
+      "initialRun": {
+        "added": 15,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 15
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 15,
+      "below200": true,
+      "seasonYears": [
+        2024
+      ]
+    },
+    {
+      "countryCode": "AUT",
+      "countryName": "Áustria",
+      "clubs": 60,
+      "initialRun": {
+        "added": 60,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 60
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 60,
+      "below200": true,
+      "seasonYears": [
+        2024,
+        2025,
+        2026
+      ]
+    },
+    {
+      "countryCode": "BLR",
+      "countryName": "Belarus",
+      "clubs": 16,
+      "initialRun": {
+        "added": 16,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 16
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 16,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "BEL",
+      "countryName": "Bélgica",
+      "clubs": 210,
+      "initialRun": {
+        "added": 210,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 210
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 210,
+      "below200": false,
+      "seasonYears": [
+        2025,
+        2026
+      ]
+    },
+    {
+      "countryCode": "BRA",
+      "countryName": "Brasil",
+      "clubs": 41,
+      "initialRun": {
+        "added": 41,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 41
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 41,
+      "below200": true,
+      "seasonYears": [
+        2025,
+        2026
+      ]
+    },
+    {
+      "countryCode": "CAN",
+      "countryName": "Canadá",
+      "clubs": 2,
+      "initialRun": {
+        "added": 2,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 2
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 2,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "KAZ",
+      "countryName": "Cazaquistão",
+      "clubs": 14,
+      "initialRun": {
+        "added": 14,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 14
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 14,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "CHN",
+      "countryName": "China",
+      "clubs": 17,
+      "initialRun": {
+        "added": 17,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 17
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 17,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "CYP",
+      "countryName": "Chipre",
+      "clubs": 14,
+      "initialRun": {
+        "added": 14,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 14
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 14,
+      "below200": true,
+      "seasonYears": [
+        2024
+      ]
+    },
+    {
+      "countryCode": "COL",
+      "countryName": "Colômbia",
+      "clubs": 21,
+      "initialRun": {
+        "added": 21,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 21
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 21,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "CRI",
+      "countryName": "Costa Rica",
+      "clubs": 12,
+      "initialRun": {
+        "added": 12,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 12
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 12,
+      "below200": true,
+      "seasonYears": [
+        2024
+      ]
+    },
+    {
+      "countryCode": "HRV",
+      "countryName": "Croácia",
+      "clubs": 10,
+      "initialRun": {
+        "added": 10,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 10
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 10,
+      "below200": true,
+      "seasonYears": [
+        2024
+      ]
+    },
+    {
+      "countryCode": "EGY",
+      "countryName": "Egito",
+      "clubs": 18,
+      "initialRun": {
+        "added": 18,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 18
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 18,
+      "below200": true,
+      "seasonYears": [
+        2024
+      ]
+    },
+    {
+      "countryCode": "ECU",
+      "countryName": "Equador",
+      "clubs": 16,
+      "initialRun": {
+        "added": 16,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 16
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 16,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "SCO",
+      "countryName": "Escócia",
+      "clubs": 12,
+      "initialRun": {
+        "added": 12,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 12
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 12,
+      "below200": true,
+      "seasonYears": [
+        2026
+      ]
+    },
+    {
+      "countryCode": "ESP",
+      "countryName": "Espanha",
+      "clubs": 41,
+      "initialRun": {
+        "added": 41,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 41
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 41,
+      "below200": true,
+      "seasonYears": [
+        2025,
+        2026
+      ]
+    },
+    {
+      "countryCode": "USA",
+      "countryName": "Estados Unidos",
+      "clubs": 28,
+      "initialRun": {
+        "added": 28,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 28
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 28,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "EST",
+      "countryName": "Estônia",
+      "clubs": 10,
+      "initialRun": {
+        "added": 10,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 10
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 10,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "FJI",
+      "countryName": "Fiji",
+      "clubs": 1,
+      "initialRun": {
+        "added": 1,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 1
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 1,
+      "below200": true,
+      "seasonYears": [
+        2026
+      ]
+    },
+    {
+      "countryCode": "FIN",
+      "countryName": "Finlândia",
+      "clubs": 12,
+      "initialRun": {
+        "added": 12,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 12
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 12,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "FRA",
+      "countryName": "França",
+      "clubs": 36,
+      "initialRun": {
+        "added": 36,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 36
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 36,
+      "below200": true,
+      "seasonYears": [
+        2025,
+        2026
+      ]
+    },
+    {
+      "countryCode": "GHA",
+      "countryName": "Gana",
+      "clubs": 18,
+      "initialRun": {
+        "added": 18,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 18
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 18,
+      "below200": true,
+      "seasonYears": [
+        2024
+      ]
+    },
+    {
+      "countryCode": "GEO",
+      "countryName": "Geórgia",
+      "clubs": 10,
+      "initialRun": {
+        "added": 10,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 10
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 10,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "GRC",
+      "countryName": "Grécia",
+      "clubs": 14,
+      "initialRun": {
+        "added": 14,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 14
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 14,
+      "below200": true,
+      "seasonYears": [
+        2026
+      ]
+    },
+    {
+      "countryCode": "HUN",
+      "countryName": "Hungria",
+      "clubs": 12,
+      "initialRun": {
+        "added": 12,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 12
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 12,
+      "below200": true,
+      "seasonYears": [
+        2024
+      ]
+    },
+    {
+      "countryCode": "COK",
+      "countryName": "Ilhas Cook",
+      "clubs": 1,
+      "initialRun": {
+        "added": 1,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 1
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 1,
+      "below200": true,
+      "seasonYears": [
+        2026
+      ]
+    },
+    {
+      "countryCode": "FRO",
+      "countryName": "Ilhas Faroé",
+      "clubs": 10,
+      "initialRun": {
+        "added": 10,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 10
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 10,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "SLB",
+      "countryName": "Ilhas Salomão",
+      "clubs": 1,
+      "initialRun": {
+        "added": 1,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 1
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 1,
+      "below200": true,
+      "seasonYears": [
+        2026
+      ]
+    },
+    {
+      "countryCode": "ENG",
+      "countryName": "Inglaterra",
+      "clubs": 119,
+      "initialRun": {
+        "added": 119,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 119
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 119,
+      "below200": true,
+      "seasonYears": [
+        2025,
+        2026
+      ]
+    },
+    {
+      "countryCode": "IRL",
+      "countryName": "Irlanda",
+      "clubs": 10,
+      "initialRun": {
+        "added": 10,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 10
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 10,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "NIR",
+      "countryName": "Irlanda do Norte",
+      "clubs": 12,
+      "initialRun": {
+        "added": 12,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 12
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 12,
+      "below200": true,
+      "seasonYears": [
+        2024
+      ]
+    },
+    {
+      "countryCode": "ISL",
+      "countryName": "Islândia",
+      "clubs": 12,
+      "initialRun": {
+        "added": 12,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 12
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 12,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "ISR",
+      "countryName": "Israel",
+      "clubs": 30,
+      "initialRun": {
+        "added": 30,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 30
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 30,
+      "below200": true,
+      "seasonYears": [
+        2024
+      ]
+    },
+    {
+      "countryCode": "ITA",
+      "countryName": "Itália",
+      "clubs": 113,
+      "initialRun": {
+        "added": 113,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 113
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 113,
+      "below200": true,
+      "seasonYears": [
+        2024,
+        2025,
+        2026
+      ]
+    },
+    {
+      "countryCode": "JPN",
+      "countryName": "Japão",
+      "clubs": 20,
+      "initialRun": {
+        "added": 20,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 20
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 20,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "LVA",
+      "countryName": "Letônia",
+      "clubs": 10,
+      "initialRun": {
+        "added": 10,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 10
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 10,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "LTU",
+      "countryName": "Lituânia",
+      "clubs": 10,
+      "initialRun": {
+        "added": 10,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 10
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 10,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "MWI",
+      "countryName": "Malawi",
+      "clubs": 16,
+      "initialRun": {
+        "added": 16,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 16
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 16,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "MAR",
+      "countryName": "Marrocos",
+      "clubs": 16,
+      "initialRun": {
+        "added": 16,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 16
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 16,
+      "below200": true,
+      "seasonYears": [
+        2024
+      ]
+    },
+    {
+      "countryCode": "MEX",
+      "countryName": "México",
+      "clubs": 33,
+      "initialRun": {
+        "added": 33,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 33
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 33,
+      "below200": true,
+      "seasonYears": [
+        2024
+      ]
+    },
+    {
+      "countryCode": "MNE",
+      "countryName": "Montenegro",
+      "clubs": 11,
+      "initialRun": {
+        "added": 11,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 11
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 11,
+      "below200": true,
+      "seasonYears": [
+        2024
+      ]
+    },
+    {
+      "countryCode": "NGA",
+      "countryName": "Nigéria",
+      "clubs": 62,
+      "initialRun": {
+        "added": 62,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 62
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 62,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "NOR",
+      "countryName": "Noruega",
+      "clubs": 32,
+      "initialRun": {
+        "added": 32,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 32
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 32,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "NCL",
+      "countryName": "Nova Caledônia",
+      "clubs": 1,
+      "initialRun": {
+        "added": 1,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 1
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 1,
+      "below200": true,
+      "seasonYears": [
+        2026
+      ]
+    },
+    {
+      "countryCode": "NZL",
+      "countryName": "Nova Zelândia",
+      "clubs": 41,
+      "initialRun": {
+        "added": 41,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 41
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 41,
+      "below200": true,
+      "seasonYears": [
+        2026
+      ]
+    },
+    {
+      "countryCode": "WAL",
+      "countryName": "País de Gales",
+      "clubs": 12,
+      "initialRun": {
+        "added": 12,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 12
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 12,
+      "below200": true,
+      "seasonYears": [
+        2024
+      ]
+    },
+    {
+      "countryCode": "NLD",
+      "countryName": "Países Baixos",
+      "clubs": 35,
+      "initialRun": {
+        "added": 35,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 35
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 35,
+      "below200": true,
+      "seasonYears": [
+        2024,
+        2026
+      ]
+    },
+    {
+      "countryCode": "PNG",
+      "countryName": "Papua-Nova Guiné",
+      "clubs": 1,
+      "initialRun": {
+        "added": 1,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 1
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 1,
+      "below200": true,
+      "seasonYears": [
+        2026
+      ]
+    },
+    {
+      "countryCode": "PRY",
+      "countryName": "Paraguai",
+      "clubs": 12,
+      "initialRun": {
+        "added": 12,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 12
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 12,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "POL",
+      "countryName": "Polônia",
+      "clubs": 36,
+      "initialRun": {
+        "added": 36,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 36
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 36,
+      "below200": true,
+      "seasonYears": [
+        2024
+      ]
+    },
+    {
+      "countryCode": "PRT",
+      "countryName": "Portugal",
+      "clubs": 35,
+      "initialRun": {
+        "added": 35,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 35
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 35,
+      "below200": true,
+      "seasonYears": [
+        2024,
+        2026
+      ]
+    },
+    {
+      "countryCode": "KEN",
+      "countryName": "Quênia",
+      "clubs": 18,
+      "initialRun": {
+        "added": 18,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 18
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 18,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "RWA",
+      "countryName": "Ruanda",
+      "clubs": 18,
+      "initialRun": {
+        "added": 18,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 18
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 18,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "SEN",
+      "countryName": "Senegal",
+      "clubs": 16,
+      "initialRun": {
+        "added": 16,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 16
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 16,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "SRB",
+      "countryName": "Sérvia",
+      "clubs": 16,
+      "initialRun": {
+        "added": 16,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 16
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 16,
+      "below200": true,
+      "seasonYears": [
+        2024
+      ]
+    },
+    {
+      "countryCode": "SWE",
+      "countryName": "Suécia",
+      "clubs": 50,
+      "initialRun": {
+        "added": 50,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 50
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 50,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "CHE",
+      "countryName": "Suíça",
+      "clubs": 20,
+      "initialRun": {
+        "added": 20,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 20
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 20,
+      "below200": true,
+      "seasonYears": [
+        2024,
+        2026
+      ]
+    },
+    {
+      "countryCode": "PYF",
+      "countryName": "Taiti",
+      "clubs": 1,
+      "initialRun": {
+        "added": 1,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 1
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 1,
+      "below200": true,
+      "seasonYears": [
+        2026
+      ]
+    },
+    {
+      "countryCode": "TZA",
+      "countryName": "Tanzânia",
+      "clubs": 16,
+      "initialRun": {
+        "added": 16,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 16
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 16,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "CZE",
+      "countryName": "Tchéquia",
+      "clubs": 31,
+      "initialRun": {
+        "added": 31,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 31
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 31,
+      "below200": true,
+      "seasonYears": [
+        2024,
+        2026
+      ]
+    },
+    {
+      "countryCode": "TUR",
+      "countryName": "Turquia",
+      "clubs": 18,
+      "initialRun": {
+        "added": 18,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 18
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 18,
+      "below200": true,
+      "seasonYears": [
+        2026
+      ]
+    },
+    {
+      "countryCode": "UGA",
+      "countryName": "Uganda",
+      "clubs": 16,
+      "initialRun": {
+        "added": 16,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 16
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 16,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "VUT",
+      "countryName": "Vanuatu",
+      "clubs": 1,
+      "initialRun": {
+        "added": 1,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 1
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 1,
+      "below200": true,
+      "seasonYears": [
+        2026
+      ]
+    },
+    {
+      "countryCode": "ZMB",
+      "countryName": "Zâmbia",
+      "clubs": 18,
+      "initialRun": {
+        "added": 18,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 18
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 18,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    },
+    {
+      "countryCode": "ZWE",
+      "countryName": "Zimbábue",
+      "clubs": 18,
+      "initialRun": {
+        "added": 18,
+        "updated": 0
+      },
+      "repeatRun": {
+        "added": 0,
+        "updated": 18
+      },
+      "shieldsFilled": 0,
+      "shieldsPending": 18,
+      "below200": true,
+      "seasonYears": [
+        2025
+      ]
+    }
+  ],
+  "countriesBelow200": [
+    {
+      "countryCode": "ZAF",
+      "countryName": "África do Sul",
+      "clubs": 35
+    },
+    {
+      "countryCode": "ALB",
+      "countryName": "Albânia",
+      "clubs": 10
+    },
+    {
+      "countryCode": "DEU",
+      "countryName": "Alemanha",
+      "clubs": 164
+    },
+    {
+      "countryCode": "SAU",
+      "countryName": "Arábia Saudita",
+      "clubs": 18
+    },
+    {
+      "countryCode": "DZA",
+      "countryName": "Argélia",
+      "clubs": 27
+    },
+    {
+      "countryCode": "ARG",
+      "countryName": "Argentina",
+      "clubs": 30
+    },
+    {
+      "countryCode": "ARM",
+      "countryName": "Armênia",
+      "clubs": 11
+    },
+    {
+      "countryCode": "AUS",
+      "countryName": "Austrália",
+      "clubs": 15
+    },
+    {
+      "countryCode": "AUT",
+      "countryName": "Áustria",
+      "clubs": 60
+    },
+    {
+      "countryCode": "BLR",
+      "countryName": "Belarus",
+      "clubs": 16
+    },
+    {
+      "countryCode": "BRA",
+      "countryName": "Brasil",
+      "clubs": 41
+    },
+    {
+      "countryCode": "CAN",
+      "countryName": "Canadá",
+      "clubs": 2
+    },
+    {
+      "countryCode": "KAZ",
+      "countryName": "Cazaquistão",
+      "clubs": 14
+    },
+    {
+      "countryCode": "CHN",
+      "countryName": "China",
+      "clubs": 17
+    },
+    {
+      "countryCode": "CYP",
+      "countryName": "Chipre",
+      "clubs": 14
+    },
+    {
+      "countryCode": "COL",
+      "countryName": "Colômbia",
+      "clubs": 21
+    },
+    {
+      "countryCode": "CRI",
+      "countryName": "Costa Rica",
+      "clubs": 12
+    },
+    {
+      "countryCode": "HRV",
+      "countryName": "Croácia",
+      "clubs": 10
+    },
+    {
+      "countryCode": "EGY",
+      "countryName": "Egito",
+      "clubs": 18
+    },
+    {
+      "countryCode": "ECU",
+      "countryName": "Equador",
+      "clubs": 16
+    },
+    {
+      "countryCode": "SCO",
+      "countryName": "Escócia",
+      "clubs": 12
+    },
+    {
+      "countryCode": "ESP",
+      "countryName": "Espanha",
+      "clubs": 41
+    },
+    {
+      "countryCode": "USA",
+      "countryName": "Estados Unidos",
+      "clubs": 28
+    },
+    {
+      "countryCode": "EST",
+      "countryName": "Estônia",
+      "clubs": 10
+    },
+    {
+      "countryCode": "FJI",
+      "countryName": "Fiji",
+      "clubs": 1
+    },
+    {
+      "countryCode": "FIN",
+      "countryName": "Finlândia",
+      "clubs": 12
+    },
+    {
+      "countryCode": "FRA",
+      "countryName": "França",
+      "clubs": 36
+    },
+    {
+      "countryCode": "GHA",
+      "countryName": "Gana",
+      "clubs": 18
+    },
+    {
+      "countryCode": "GEO",
+      "countryName": "Geórgia",
+      "clubs": 10
+    },
+    {
+      "countryCode": "GRC",
+      "countryName": "Grécia",
+      "clubs": 14
+    },
+    {
+      "countryCode": "HUN",
+      "countryName": "Hungria",
+      "clubs": 12
+    },
+    {
+      "countryCode": "COK",
+      "countryName": "Ilhas Cook",
+      "clubs": 1
+    },
+    {
+      "countryCode": "FRO",
+      "countryName": "Ilhas Faroé",
+      "clubs": 10
+    },
+    {
+      "countryCode": "SLB",
+      "countryName": "Ilhas Salomão",
+      "clubs": 1
+    },
+    {
+      "countryCode": "ENG",
+      "countryName": "Inglaterra",
+      "clubs": 119
+    },
+    {
+      "countryCode": "IRL",
+      "countryName": "Irlanda",
+      "clubs": 10
+    },
+    {
+      "countryCode": "NIR",
+      "countryName": "Irlanda do Norte",
+      "clubs": 12
+    },
+    {
+      "countryCode": "ISL",
+      "countryName": "Islândia",
+      "clubs": 12
+    },
+    {
+      "countryCode": "ISR",
+      "countryName": "Israel",
+      "clubs": 30
+    },
+    {
+      "countryCode": "ITA",
+      "countryName": "Itália",
+      "clubs": 113
+    },
+    {
+      "countryCode": "JPN",
+      "countryName": "Japão",
+      "clubs": 20
+    },
+    {
+      "countryCode": "LVA",
+      "countryName": "Letônia",
+      "clubs": 10
+    },
+    {
+      "countryCode": "LTU",
+      "countryName": "Lituânia",
+      "clubs": 10
+    },
+    {
+      "countryCode": "MWI",
+      "countryName": "Malawi",
+      "clubs": 16
+    },
+    {
+      "countryCode": "MAR",
+      "countryName": "Marrocos",
+      "clubs": 16
+    },
+    {
+      "countryCode": "MEX",
+      "countryName": "México",
+      "clubs": 33
+    },
+    {
+      "countryCode": "MNE",
+      "countryName": "Montenegro",
+      "clubs": 11
+    },
+    {
+      "countryCode": "NGA",
+      "countryName": "Nigéria",
+      "clubs": 62
+    },
+    {
+      "countryCode": "NOR",
+      "countryName": "Noruega",
+      "clubs": 32
+    },
+    {
+      "countryCode": "NCL",
+      "countryName": "Nova Caledônia",
+      "clubs": 1
+    },
+    {
+      "countryCode": "NZL",
+      "countryName": "Nova Zelândia",
+      "clubs": 41
+    },
+    {
+      "countryCode": "WAL",
+      "countryName": "País de Gales",
+      "clubs": 12
+    },
+    {
+      "countryCode": "NLD",
+      "countryName": "Países Baixos",
+      "clubs": 35
+    },
+    {
+      "countryCode": "PNG",
+      "countryName": "Papua-Nova Guiné",
+      "clubs": 1
+    },
+    {
+      "countryCode": "PRY",
+      "countryName": "Paraguai",
+      "clubs": 12
+    },
+    {
+      "countryCode": "POL",
+      "countryName": "Polônia",
+      "clubs": 36
+    },
+    {
+      "countryCode": "PRT",
+      "countryName": "Portugal",
+      "clubs": 35
+    },
+    {
+      "countryCode": "KEN",
+      "countryName": "Quênia",
+      "clubs": 18
+    },
+    {
+      "countryCode": "RWA",
+      "countryName": "Ruanda",
+      "clubs": 18
+    },
+    {
+      "countryCode": "SEN",
+      "countryName": "Senegal",
+      "clubs": 16
+    },
+    {
+      "countryCode": "SRB",
+      "countryName": "Sérvia",
+      "clubs": 16
+    },
+    {
+      "countryCode": "SWE",
+      "countryName": "Suécia",
+      "clubs": 50
+    },
+    {
+      "countryCode": "CHE",
+      "countryName": "Suíça",
+      "clubs": 20
+    },
+    {
+      "countryCode": "PYF",
+      "countryName": "Taiti",
+      "clubs": 1
+    },
+    {
+      "countryCode": "TZA",
+      "countryName": "Tanzânia",
+      "clubs": 16
+    },
+    {
+      "countryCode": "CZE",
+      "countryName": "Tchéquia",
+      "clubs": 31
+    },
+    {
+      "countryCode": "TUR",
+      "countryName": "Turquia",
+      "clubs": 18
+    },
+    {
+      "countryCode": "UGA",
+      "countryName": "Uganda",
+      "clubs": 16
+    },
+    {
+      "countryCode": "VUT",
+      "countryName": "Vanuatu",
+      "clubs": 1
+    },
+    {
+      "countryCode": "ZMB",
+      "countryName": "Zâmbia",
+      "clubs": 18
+    },
+    {
+      "countryCode": "ZWE",
+      "countryName": "Zimbábue",
+      "clubs": 18
+    }
+  ],
+  "sources": {
+    "openfootballRepositories": [
+      {
+        "name": "austria",
+        "url": "https://github.com/openfootball/austria",
+        "commit": "627ba1b3ebddc5a513420239356f490bef2453ec",
+        "license": "CC0-1.0"
+      },
+      {
+        "name": "belgium",
+        "url": "https://github.com/openfootball/belgium",
+        "commit": "1166d3c9c5725aec01e1bbeaa20f6467e39ddbb8",
+        "license": "CC0-1.0"
+      },
+      {
+        "name": "deutschland",
+        "url": "https://github.com/openfootball/deutschland",
+        "commit": "c34532ab6950aa0089ef1c736ffdb8c818c3356f",
+        "license": "CC0-1.0"
+      },
+      {
+        "name": "england",
+        "url": "https://github.com/openfootball/england",
+        "commit": "9ee7a0c351805c99cc334478a9bf04b7d0432fec",
+        "license": "CC0-1.0"
+      },
+      {
+        "name": "espana",
+        "url": "https://github.com/openfootball/espana",
+        "commit": "80035a93dd4920985af52aa097a54a6fb888563b",
+        "license": "CC0-1.0"
+      },
+      {
+        "name": "italy",
+        "url": "https://github.com/openfootball/italy",
+        "commit": "48954d163c312aa705efacb64f771267031fe6eb",
+        "license": "CC0-1.0"
+      },
+      {
+        "name": "europe",
+        "url": "https://github.com/openfootball/europe",
+        "commit": "63df627f3c87ce71708f016522ea236cf74332c3",
+        "license": "CC0-1.0"
+      },
+      {
+        "name": "south-america",
+        "url": "https://github.com/openfootball/south-america",
+        "commit": "f51b2dcf5e0fab9f0abd5206ab8c24a413e67277",
+        "license": "CC0-1.0"
+      },
+      {
+        "name": "world",
+        "url": "https://github.com/openfootball/world",
+        "commit": "42df8203e73e922cdfa36104e3acee3aea1f2bc0",
+        "license": "CC0-1.0"
+      },
+      {
+        "name": "clubs",
+        "url": "https://github.com/openfootball/clubs",
+        "commit": "ae3800227c449447b3a337fc0aac79a8f02f4c8b",
+        "license": "CC0-1.0"
+      }
+    ],
+    "officialSources": [
+      {
+        "name": "New Zealand Football ? times da National League masculina 2026",
+        "url": "https://www.nzfootball.co.nz/newsarticle/162811?newsfeedPageNum=5"
+      },
+      {
+        "name": "New Zealand Football ? times do Championship feminino 2026",
+        "url": "https://www.nzfootball.co.nz/newsarticle/170010?newsfeedId=671503"
+      },
+      {
+        "name": "OFC ? clubes participantes da Champions League masculina 2026",
+        "url": "https://www.oceaniafootball.com/draw-confirmed-for-ofc-mens-champions-league-2026/"
+      }
+    ]
+  }
+}

@@ -1,0 +1,616 @@
+{
+  "executedAt": "2026-11-16T05:19:05.704Z",
+  "target": "Supabase local em loopback; linked_project:null",
+  "snapshot": "data/team-catalog/germany-2026-27-team-snapshot.json",
+  "total": 147,
+  "leagueCoverage": [
+    {
+      "countryCode": "DEU",
+      "countryName": "Alemanha",
+      "competition": "Bundesliga",
+      "competitionKey": "DEU:bundesliga:2026-27",
+      "season": "2026/27",
+      "sourceUrl": "https://datencenter.dfb.de/competitions/12/seasons/current/teams",
+      "expectedParticipants": 18,
+      "sourceEntries": 18,
+      "verifiedParticipants": 18,
+      "groupCounts": {
+        "Grupo único": 18
+      },
+      "notes": []
+    },
+    {
+      "countryCode": "DEU",
+      "countryName": "Alemanha",
+      "competition": "2. Bundesliga",
+      "competitionKey": "DEU:2-bundesliga:2026-27",
+      "season": "2026/27",
+      "sourceUrl": "https://datencenter.dfb.de/competitions/3/seasons/current/teams",
+      "expectedParticipants": 18,
+      "sourceEntries": 18,
+      "verifiedParticipants": 18,
+      "groupCounts": {
+        "Grupo único": 18
+      },
+      "notes": []
+    },
+    {
+      "countryCode": "DEU",
+      "countryName": "Alemanha",
+      "competition": "3. Liga",
+      "competitionKey": "DEU:3-liga:2026-27",
+      "season": "2026/27",
+      "sourceUrl": "https://www.dfb.de/news/teilnehmerfeld-der-3-liga-steht-fest-havelse-rueckt-fuer-1860-nach",
+      "expectedParticipants": 20,
+      "sourceEntries": 20,
+      "verifiedParticipants": 20,
+      "groupCounts": {
+        "Grupo único": 20
+      },
+      "notes": []
+    },
+    {
+      "countryCode": "DEU",
+      "countryName": "Alemanha",
+      "competition": "Regionalliga Nord",
+      "competitionKey": "DEU:regionalliga-nord:2026-27",
+      "season": "2026/27",
+      "sourceUrl": "https://www.nordfv.de/fileadmin/Spielplaene/260707_RLN-Spielplan_2026-2027.pdf",
+      "expectedParticipants": 18,
+      "sourceEntries": 18,
+      "verifiedParticipants": 18,
+      "groupCounts": {
+        "Regionalliga Nord": 18
+      },
+      "notes": []
+    },
+    {
+      "countryCode": "DEU",
+      "countryName": "Alemanha",
+      "competition": "Regionalliga Nordost",
+      "competitionKey": "DEU:regionalliga-nordost:2026-27",
+      "season": "2026/27",
+      "sourceUrl": "https://www.nofv-online.de/index.php/regionalliga-nordost.html",
+      "expectedParticipants": 18,
+      "sourceEntries": 18,
+      "verifiedParticipants": 18,
+      "groupCounts": {
+        "Regionalliga Nordost": 18
+      },
+      "notes": []
+    },
+    {
+      "countryCode": "DEU",
+      "countryName": "Alemanha",
+      "competition": "Regionalliga West",
+      "competitionKey": "DEU:regionalliga-west:2026-27",
+      "season": "2026/27",
+      "sourceUrl": "https://wdfv.de/spielbetrieb/herren-regionalliga-west",
+      "expectedParticipants": 18,
+      "sourceEntries": 18,
+      "verifiedParticipants": 18,
+      "groupCounts": {
+        "Regionalliga West": 18
+      },
+      "notes": []
+    },
+    {
+      "countryCode": "DEU",
+      "countryName": "Alemanha",
+      "competition": "Regionalliga Bayern",
+      "competitionKey": "DEU:regionalliga-bayern:2026-27",
+      "season": "2026/27",
+      "sourceUrl": "https://www.bfv.de/spielbetrieb-verbandsleben/ligabetrieb/regionalliga-bayern",
+      "expectedParticipants": 19,
+      "sourceEntries": 19,
+      "verifiedParticipants": 19,
+      "groupCounts": {
+        "Regionalliga Bayern": 19
+      },
+      "notes": []
+    },
+    {
+      "countryCode": "DEU",
+      "countryName": "Alemanha",
+      "competition": "Regionalliga Südwest",
+      "competitionKey": "DEU:regionalliga-suedwest:2026-27",
+      "season": "2026/27",
+      "sourceUrl": "https://www.regionalliga-suedwest.de/Spielbetrieb/Vereine/",
+      "expectedParticipants": 18,
+      "sourceEntries": 18,
+      "verifiedParticipants": 18,
+      "groupCounts": {
+        "Regionalliga Südwest": 18
+      },
+      "notes": []
+    }
+  ],
+  "countries": [
+    {
+      "countryCode": "DEU",
+      "countryName": "Alemanha",
+      "total": 147,
+      "added": 0,
+      "updated": 147,
+      "manualReview": [],
+      "competitions": [
+        {
+          "competitionKey": "DEU:bundesliga:2026-27",
+          "competitionName": "Bundesliga",
+          "season": 2026,
+          "existingBefore": 18,
+          "added": 0,
+          "manualReview": 0,
+          "addedTeams": [],
+          "updatedTeams": [
+            "1. FC Köln",
+            "1. FC Union Berlin",
+            "1. FSV Mainz 05",
+            "Bayer 04 Leverkusen",
+            "Borussia Dortmund",
+            "Borussia Mönchengladbach",
+            "Eintracht Frankfurt",
+            "FC Augsburg",
+            "FC Bayern München",
+            "FC Schalke 04",
+            "Hamburger SV",
+            "RB Leipzig",
+            "SC Freiburg",
+            "SC Paderborn 07",
+            "SV 07 Elversberg",
+            "TSG 1899 Hoffenheim",
+            "VfB Stuttgart",
+            "SV Werder Bremen"
+          ],
+          "withoutShield": [
+            "Borussia Dortmund",
+            "Borussia Mönchengladbach",
+            "Eintracht Frankfurt",
+            "FC Augsburg",
+            "FC Schalke 04",
+            "Hamburger SV",
+            "SC Freiburg",
+            "SV 07 Elversberg",
+            "TSG 1899 Hoffenheim",
+            "VfB Stuttgart",
+            "SV Werder Bremen"
+          ],
+          "shieldPending": [
+            "1. FC Köln",
+            "1. FC Union Berlin",
+            "1. FSV Mainz 05",
+            "Bayer 04 Leverkusen",
+            "FC Bayern München",
+            "RB Leipzig",
+            "SC Paderborn 07"
+          ],
+          "expectedParticipants": 18,
+          "groupCounts": {
+            "Grupo único": 18
+          },
+          "missingAfterImport": 0,
+          "participantSourceUrl": "https://datencenter.dfb.de/competitions/12/seasons/current/teams"
+        },
+        {
+          "competitionKey": "DEU:2-bundesliga:2026-27",
+          "competitionName": "2. Bundesliga",
+          "season": 2026,
+          "existingBefore": 18,
+          "added": 0,
+          "manualReview": 0,
+          "addedTeams": [],
+          "updatedTeams": [
+            "1. FC Heidenheim 1846",
+            "1. FC Kaiserslautern",
+            "1. FC Magdeburg",
+            "1. FC Nürnberg",
+            "Arminia Bielefeld",
+            "Dynamo Dresden",
+            "Eintracht Braunschweig",
+            "Energie Cottbus",
+            "FC St. Pauli",
+            "Hannover 96",
+            "Hertha BSC",
+            "Holstein Kiel",
+            "Karlsruher SC",
+            "SpVgg Greuther Fürth",
+            "SV Darmstadt 98",
+            "VfL Bochum",
+            "VfL Osnabrück",
+            "VfL Wolfsburg"
+          ],
+          "withoutShield": [
+            "Arminia Bielefeld",
+            "Dynamo Dresden",
+            "Eintracht Braunschweig",
+            "Energie Cottbus",
+            "FC St. Pauli",
+            "Hannover 96",
+            "Hertha BSC",
+            "Holstein Kiel",
+            "Karlsruher SC",
+            "SpVgg Greuther Fürth",
+            "SV Darmstadt 98",
+            "VfL Bochum",
+            "VfL Osnabrück",
+            "VfL Wolfsburg"
+          ],
+          "shieldPending": [
+            "1. FC Heidenheim 1846",
+            "1. FC Kaiserslautern",
+            "1. FC Magdeburg",
+            "1. FC Nürnberg"
+          ],
+          "expectedParticipants": 18,
+          "groupCounts": {
+            "Grupo único": 18
+          },
+          "missingAfterImport": 0,
+          "participantSourceUrl": "https://datencenter.dfb.de/competitions/3/seasons/current/teams"
+        },
+        {
+          "competitionKey": "DEU:3-liga:2026-27",
+          "competitionName": "3. Liga",
+          "season": 2026,
+          "existingBefore": 20,
+          "added": 0,
+          "manualReview": 0,
+          "addedTeams": [],
+          "updatedTeams": [
+            "Fortuna Düsseldorf",
+            "Preußen Münster",
+            "Rot-Weiss Essen",
+            "MSV Duisburg",
+            "Hansa Rostock",
+            "SC Verl",
+            "Alemannia Aachen",
+            "SV Wehen Wiesbaden",
+            "SV Waldhof Mannheim",
+            "Viktoria Köln",
+            "FC Ingolstadt 04",
+            "Jahn Regensburg",
+            "VfB Stuttgart II",
+            "1. FC Saarbrücken",
+            "1899 Hoffenheim II",
+            "TSV Havelse",
+            "SV Meppen",
+            "Fortuna Köln",
+            "SG Sonnenhof Großaspach",
+            "Würzburger Kickers"
+          ],
+          "withoutShield": [
+            "Fortuna Düsseldorf",
+            "Preußen Münster",
+            "Rot-Weiss Essen",
+            "MSV Duisburg",
+            "SC Verl",
+            "Alemannia Aachen",
+            "SV Wehen Wiesbaden",
+            "SV Waldhof Mannheim",
+            "Viktoria Köln",
+            "FC Ingolstadt 04",
+            "Jahn Regensburg",
+            "VfB Stuttgart II",
+            "TSV Havelse",
+            "SV Meppen",
+            "Fortuna Köln",
+            "SG Sonnenhof Großaspach",
+            "Würzburger Kickers"
+          ],
+          "shieldPending": [
+            "Hansa Rostock",
+            "1. FC Saarbrücken",
+            "1899 Hoffenheim II"
+          ],
+          "expectedParticipants": 20,
+          "groupCounts": {
+            "Grupo único": 20
+          },
+          "missingAfterImport": 0,
+          "participantSourceUrl": "https://www.dfb.de/news/teilnehmerfeld-der-3-liga-steht-fest-havelse-rueckt-fuer-1860-nach"
+        },
+        {
+          "competitionKey": "DEU:regionalliga-nord:2026-27",
+          "competitionName": "Regionalliga Nord",
+          "season": 2026,
+          "existingBefore": 18,
+          "added": 0,
+          "manualReview": 0,
+          "addedTeams": [],
+          "updatedTeams": [
+            "Werder Bremen II",
+            "VfB Oldenburg",
+            "Bremer SV",
+            "Hannover 96 II",
+            "Eintracht Norderstedt",
+            "SV Atlas Delmenhorst",
+            "SSV Jeddeloh",
+            "FSV Schöningen",
+            "HSC Hannover",
+            "Kickers Emden",
+            "VfB Lübeck",
+            "SC Weiche Flensburg 08",
+            "SV Todesfelde",
+            "FC St. Pauli II",
+            "SV Drochtersen/Assel",
+            "1. FC Phönix Lübeck",
+            "Eimsbütteler TV",
+            "Hamburger SV II"
+          ],
+          "withoutShield": [
+            "Werder Bremen II",
+            "VfB Oldenburg",
+            "Bremer SV",
+            "Hannover 96 II",
+            "Eintracht Norderstedt",
+            "SV Atlas Delmenhorst",
+            "SSV Jeddeloh",
+            "FSV Schöningen",
+            "HSC Hannover",
+            "Kickers Emden",
+            "VfB Lübeck",
+            "SC Weiche Flensburg 08",
+            "SV Todesfelde",
+            "FC St. Pauli II",
+            "SV Drochtersen/Assel",
+            "Eimsbütteler TV",
+            "Hamburger SV II"
+          ],
+          "shieldPending": [
+            "1. FC Phönix Lübeck"
+          ],
+          "expectedParticipants": 18,
+          "groupCounts": {
+            "Regionalliga Nord": 18
+          },
+          "missingAfterImport": 0,
+          "participantSourceUrl": "https://www.nordfv.de/fileadmin/Spielplaene/260707_RLN-Spielplan_2026-2027.pdf"
+        },
+        {
+          "competitionKey": "DEU:regionalliga-nordost:2026-27",
+          "competitionName": "Regionalliga Nordost",
+          "season": 2026,
+          "existingBefore": 18,
+          "added": 0,
+          "manualReview": 0,
+          "addedTeams": [],
+          "updatedTeams": [
+            "Erzgebirge Aue",
+            "Hertha BSC II",
+            "BFC Dynamo Berlin",
+            "VSG Altglienicke",
+            "SV Tasmania Berlin",
+            "BFC Preussen",
+            "Chemnitzer FC",
+            "Rot-Weiß Erfurt",
+            "Greifswalder FC",
+            "Hallescher FC",
+            "FC Carl Zeiss Jena",
+            "1. FC Lok Leipzig",
+            "BSG Chemie Leipzig",
+            "FSV 63 Luckenwalde",
+            "1. FC Magdeburg II",
+            "SV Babelsberg 03",
+            "RSV Eintracht 1949",
+            "FSV Zwickau"
+          ],
+          "withoutShield": [
+            "Erzgebirge Aue",
+            "Hertha BSC II",
+            "BFC Dynamo Berlin",
+            "VSG Altglienicke",
+            "SV Tasmania Berlin",
+            "BFC Preussen",
+            "Chemnitzer FC",
+            "Rot-Weiß Erfurt",
+            "Greifswalder FC",
+            "Hallescher FC",
+            "FC Carl Zeiss Jena",
+            "BSG Chemie Leipzig",
+            "FSV 63 Luckenwalde",
+            "1. FC Magdeburg II",
+            "SV Babelsberg 03",
+            "RSV Eintracht 1949",
+            "FSV Zwickau"
+          ],
+          "shieldPending": [
+            "1. FC Lok Leipzig"
+          ],
+          "expectedParticipants": 18,
+          "groupCounts": {
+            "Regionalliga Nordost": 18
+          },
+          "missingAfterImport": 0,
+          "participantSourceUrl": "https://www.nofv-online.de/index.php/regionalliga-nordost.html"
+        },
+        {
+          "competitionKey": "DEU:regionalliga-west:2026-27",
+          "competitionName": "Regionalliga West",
+          "season": 2026,
+          "existingBefore": 18,
+          "added": 0,
+          "manualReview": 0,
+          "addedTeams": [],
+          "updatedTeams": [
+            "SV Bergisch Gladbach 09",
+            "1. FC Bocholt",
+            "VfL Bochum II",
+            "Bonner SC",
+            "Borussia Dortmund II",
+            "FC Gütersloh",
+            "VfB 03 Hilden",
+            "1. FC Köln II",
+            "SF Lotte",
+            "Bor. Mönchengladbach II",
+            "Rot-Weiß Oberhausen",
+            "SC Paderborn 07 II",
+            "Westfalia Rhynern",
+            "SV Rödinghausen",
+            "FC Schalke 04 II",
+            "Sportfreunde Siegen",
+            "SG Wattenscheid 09",
+            "SC Wiedenbrück"
+          ],
+          "withoutShield": [
+            "SV Bergisch Gladbach 09",
+            "VfL Bochum II",
+            "Bonner SC",
+            "Borussia Dortmund II",
+            "FC Gütersloh",
+            "VfB 03 Hilden",
+            "SF Lotte",
+            "Bor. Mönchengladbach II",
+            "Rot-Weiß Oberhausen",
+            "Westfalia Rhynern",
+            "SV Rödinghausen",
+            "FC Schalke 04 II",
+            "Sportfreunde Siegen",
+            "SG Wattenscheid 09",
+            "SC Wiedenbrück"
+          ],
+          "shieldPending": [
+            "1. FC Bocholt",
+            "1. FC Köln II",
+            "SC Paderborn 07 II"
+          ],
+          "expectedParticipants": 18,
+          "groupCounts": {
+            "Regionalliga West": 18
+          },
+          "missingAfterImport": 0,
+          "participantSourceUrl": "https://wdfv.de/spielbetrieb/herren-regionalliga-west"
+        },
+        {
+          "competitionKey": "DEU:regionalliga-bayern:2026-27",
+          "competitionName": "Regionalliga Bayern",
+          "season": 2026,
+          "existingBefore": 19,
+          "added": 0,
+          "manualReview": 0,
+          "addedTeams": [],
+          "updatedTeams": [
+            "1. FC Nürnberg II",
+            "1. FC Schweinfurt 05",
+            "DJK Vilzing",
+            "FC Augsburg II",
+            "Bayern München II",
+            "FC Memmingen",
+            "FV Illertissen",
+            "SC Eltersdorf",
+            "SpVgg Ansbach",
+            "SpVgg Bayreuth",
+            "SpVgg Greuther Fürth II",
+            "SpVgg Unterhaching",
+            "Wacker Burghausen",
+            "TSV 1860 München",
+            "TSV 1882 Landsberg",
+            "TSV Aubstadt",
+            "TSV Buchbach",
+            "TSV Schwaben Augsburg",
+            "VfB Eichstätt"
+          ],
+          "withoutShield": [
+            "DJK Vilzing",
+            "FC Augsburg II",
+            "FC Memmingen",
+            "FV Illertissen",
+            "SC Eltersdorf",
+            "SpVgg Ansbach",
+            "SpVgg Bayreuth",
+            "SpVgg Greuther Fürth II",
+            "SpVgg Unterhaching",
+            "Wacker Burghausen",
+            "TSV 1860 München",
+            "TSV 1882 Landsberg",
+            "TSV Aubstadt",
+            "TSV Buchbach",
+            "TSV Schwaben Augsburg",
+            "VfB Eichstätt"
+          ],
+          "shieldPending": [
+            "1. FC Nürnberg II",
+            "1. FC Schweinfurt 05",
+            "Bayern München II"
+          ],
+          "expectedParticipants": 19,
+          "groupCounts": {
+            "Regionalliga Bayern": 19
+          },
+          "missingAfterImport": 0,
+          "participantSourceUrl": "https://www.bfv.de/spielbetrieb-verbandsleben/ligabetrieb/regionalliga-bayern"
+        },
+        {
+          "competitionKey": "DEU:regionalliga-suedwest:2026-27",
+          "competitionName": "Regionalliga Südwest",
+          "season": 2026,
+          "existingBefore": 18,
+          "added": 0,
+          "manualReview": 0,
+          "addedTeams": [],
+          "updatedTeams": [
+            "1. FSV Mainz 05 II",
+            "SSV Ulm 1846",
+            "1. FC Kaiserslautern II",
+            "VfR Aalen",
+            "FC 08 Homburg",
+            "SV Sandhausen",
+            "VfR Mannheim",
+            "FC-Astoria Walldorf",
+            "FSV Frankfurt",
+            "KSV Hessen Kassel",
+            "Kickers Offenbach",
+            "SC Freiburg II",
+            "SG Barockstadt Fulda-Lehnerz",
+            "SGV Freiberg",
+            "Eintracht Trier",
+            "Stuttgarter Kickers",
+            "Eintracht Frankfurt II",
+            "TSV Steinbach Haiger"
+          ],
+          "withoutShield": [
+            "SSV Ulm 1846",
+            "1. FC Kaiserslautern II",
+            "VfR Aalen",
+            "FC 08 Homburg",
+            "SV Sandhausen",
+            "VfR Mannheim",
+            "FSV Frankfurt",
+            "KSV Hessen Kassel",
+            "Kickers Offenbach",
+            "SC Freiburg II",
+            "SGV Freiberg",
+            "Eintracht Trier",
+            "Stuttgarter Kickers",
+            "Eintracht Frankfurt II",
+            "TSV Steinbach Haiger"
+          ],
+          "shieldPending": [
+            "1. FSV Mainz 05 II",
+            "FC-Astoria Walldorf",
+            "SG Barockstadt Fulda-Lehnerz"
+          ],
+          "expectedParticipants": 18,
+          "groupCounts": {
+            "Regionalliga Südwest": 18
+          },
+          "missingAfterImport": 0,
+          "participantSourceUrl": "https://www.regionalliga-suedwest.de/Spielbetrieb/Vereine/"
+        }
+      ],
+      "shieldsFilled": 0,
+      "shieldsPending": 147,
+      "below200": true,
+      "seasons": [
+        2026
+      ]
+    }
+  ],
+  "totalAdded": 0,
+  "totalUpdated": 147,
+  "totalManualReview": 0,
+  "shieldsFilled": 0,
+  "shieldsPending": 147,
+  "below200Countries": [
+    "DEU"
+  ]
+}

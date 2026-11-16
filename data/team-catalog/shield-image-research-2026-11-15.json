@@ -1,0 +1,179 @@
+{
+  "date": "2026-11-15",
+  "discovery": "Image search used to locate candidates; each Commons page was checked for exact team/file identity and reuse status. Direct Wikimedia uploads are used, never search-result thumbnails.",
+  "target": "local Supabase loopback; linked_project:null",
+  "filled": 8,
+  "preserved": 0,
+  "pendingReason": "Results without a clear reuse license, current badge match, or exact team match remain pending.",
+  "entries": [
+    {
+      "name": "Peñarol",
+      "status": "filled",
+      "file": "Escudo de Peñarol.svg",
+      "license": "Public domain (PD-textlogo; Wikimedia Commons)",
+      "source": "https://commons.wikimedia.org/wiki/File:Escudo_de_Pe%C3%B1arol.svg"
+    },
+    {
+      "name": "Danubio",
+      "status": "filled",
+      "file": "Escudo oficial de Danubio FC.png",
+      "license": "Public domain (PD-ineligible; Wikimedia Commons)",
+      "source": "https://commons.wikimedia.org/wiki/File:Escudo_oficial_de_Danubio_FC.png"
+    },
+    {
+      "name": "Liverpool Montevideo",
+      "status": "filled",
+      "file": "Escudo-Liverpool.png",
+      "license": "Public domain (PD-textlogo; Wikimedia Commons)",
+      "source": "https://commons.wikimedia.org/wiki/File:Escudo-Liverpool.png"
+    },
+    {
+      "name": "Flamengo (F)",
+      "status": "filled",
+      "file": "Clube de Regatas do Flamengo logo.svg",
+      "license": "Public domain (PD-textlogo; Wikimedia Commons)",
+      "source": "https://commons.wikimedia.org/wiki/File:Clube_de_Regatas_do_Flamengo_logo.svg"
+    },
+    {
+      "name": "Internacional (F)",
+      "status": "filled",
+      "file": "Escudo do Sport Club Internacional.svg",
+      "license": "Public domain (PD-textlogo; Wikimedia Commons)",
+      "source": "https://commons.wikimedia.org/wiki/File:Escudo_do_Sport_Club_Internacional.svg"
+    },
+    {
+      "name": "Itália",
+      "status": "filled",
+      "file": "Logo Italy National Football Team - 2023.svg",
+      "license": "Public domain (PD-textlogo; Wikimedia Commons; FIGC source)",
+      "source": "https://commons.wikimedia.org/wiki/File:Logo_Italy_National_Football_Team_-_2023.svg"
+    },
+    {
+      "name": "Albânia",
+      "status": "filled",
+      "file": "Stema e Fanellës së Kombëtares.svg",
+      "license": "Public domain under Albanian Copyright Law Article 12 (official organizational symbols)",
+      "source": "https://commons.wikimedia.org/wiki/File:Stema_e_Fanell%C3%ABs_s%C3%AB_Komb%C3%ABtares.svg",
+      "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/3/30/Stema_e_Fanell%C3%ABs_s%C3%AB_Komb%C3%ABtares.svg"
+    },
+    {
+      "name": "Finlândia",
+      "status": "filled",
+      "file": "Huuhkajat logo.svg",
+      "license": "Public domain (PD-textlogo; Wikimedia Commons); trademark caveat",
+      "source": "https://commons.wikimedia.org/wiki/File:Huuhkajat_logo.svg",
+      "officialSource": "https://www.palloliitto.fi/materiaalipankki?tab=logot&tab2=maajoukkueet",
+      "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/3/31/Huuhkajat_logo.svg"
+    }
+  ],
+  "pendingEntries": [
+    {
+      "name": "San Marino",
+      "countryCode": "SMR",
+      "status": "pending",
+      "reason": "O emblema atual localizado tem licença CC BY-SA; o catálogo não oferece campo público de atribuição, e a imagem de domínio público localizada não é a versão atual."
+    },
+    {
+      "name": "Espanha",
+      "countryCode": "ESP",
+      "status": "pending",
+      "reason": "Os candidatos atuais encontrados não têm licença reutilizável confirmada; o escudo de 2026 tem disputa de direito autoral e a marca RFEF não é o escudo da seleção."
+    },
+    {
+      "name": "República Tcheca",
+      "countryCode": "CZE",
+      "status": "pending",
+      "reason": "Os arquivos reutilizáveis encontrados são o brasão de Estado, não o distintivo atual confirmado da seleção."
+    },
+    {
+      "name": "Panamá",
+      "countryCode": "PAN",
+      "status": "pending",
+      "reason": "Não foi confirmada autorização reutilizável para o escudo atual da federação."
+    },
+    {
+      "name": "Turquia",
+      "countryCode": "TUR",
+      "status": "pending",
+      "reason": "A TFF confirma a bandeira no uniforme de 2026; Commons indica domínio público, mas alerta que o uso da insígnia oficial pode ter restrições independentes."
+    },
+    {
+      "name": "Armênia",
+      "countryCode": "ARM",
+      "status": "pending",
+      "reason": "Não foi confirmada licença reutilizável para o distintivo atual da seleção; brasão de Estado não foi tratado como escudo da equipe."
+    },
+    {
+      "name": "Defensor Sporting",
+      "countryCode": "URY",
+      "status": "pending",
+      "reason": "O escudo localizado no Commons requer CC BY-SA e atribuição pública, ausente no catálogo."
+    },
+    {
+      "name": "Letônia",
+      "countryCode": "LVA",
+      "status": "pending",
+      "reason": "O escudo atual usa composição gráfica e padrões próprios; não foi encontrada permissão reutilizável para o arquivo exato."
+    },
+    {
+      "name": "Montenegro",
+      "countryCode": "MNE",
+      "status": "pending",
+      "reason": "O distintivo atual da federação é uma composição gráfica complexa sem licença reutilizável confirmada."
+    },
+    {
+      "name": "Inglaterra",
+      "countryCode": "ENG",
+      "status": "pending",
+      "reason": "O candidato atual encontrado tem direitos contestados; não houve autorização direta verificada da federação."
+    },
+    {
+      "name": "Curaçao",
+      "countryCode": "CUW",
+      "status": "pending",
+      "reason": "Não foi confirmada licença reutilizável para o distintivo atual da seleção."
+    },
+    {
+      "name": "Croácia",
+      "countryCode": "HRV",
+      "status": "pending",
+      "reason": "O HNS disponibiliza logotipos para uso editorial e proíbe uso comercial; a aplicabilidade ao site não foi confirmada."
+    },
+    {
+      "name": "Bielorrússia",
+      "countryCode": "BLR",
+      "status": "pending",
+      "reason": "Não foi confirmada licença reutilizável para o distintivo atual da seleção."
+    },
+    {
+      "name": "London City Lionesses (F)",
+      "countryCode": "ENG",
+      "status": "pending",
+      "reason": "O candidato atual encontrado tem direitos contestados; não houve autorização direta verificada da federação."
+    },
+    {
+      "name": "Chipre",
+      "countryCode": "CYP",
+      "status": "pending",
+      "reason": "Não foi confirmada licença reutilizável para o distintivo atual da seleção."
+    },
+    {
+      "name": "Bélgica",
+      "countryCode": "BEL",
+      "status": "pending",
+      "reason": "O emblema histórico encontrado é de 1948–1980; não foi confirmada licença reutilizável para o escudo atual."
+    },
+    {
+      "name": "Arsenal (F)",
+      "countryCode": "ENG",
+      "status": "pending",
+      "reason": "O candidato atual encontrado tem direitos contestados; não houve autorização direta verificada da federação."
+    },
+    {
+      "name": "França",
+      "countryCode": "FRA",
+      "status": "pending",
+      "reason": "Não foi confirmada licença reutilizável para o distintivo atual da seleção."
+    }
+  ]
+}

@@ -15,7 +15,6 @@ import {
   Play,
   Plus,
   Search,
-  Tags,
   Trash2,
   X,
 } from "lucide-react";
@@ -24,7 +23,6 @@ import type { AdminCategory } from "@/lib/categories";
 import { isSafeHttpsUrl } from "@/lib/channel-schema";
 import { extractEmbedIframeSrc } from "@/lib/embed-code";
 import { EmbedFrame } from "@/components/embed-frame";
-import { AdminCategoriesManager } from "@/components/admin-categories-manager";
 import type { ChannelCardData } from "@/lib/channels";
 import type { EmbedReferrerPolicy } from "@/lib/embed-provider-policy-core";
 import {
@@ -32,6 +30,7 @@ import {
   getAdminEmbedPreviewPolicyAction,
   saveChannelAction,
   setChannelPublishedAction,
+  updateChannelSourceAction,
 } from "@/app/admin/actions";
 
 type AdminChannel = ChannelCardData;
@@ -46,12 +45,10 @@ function iframeCodeForUrl(url: string) {
   return `<iframe src="${escapedUrl}"></iframe>`;
 }
 
-function swapItems<T>(items: T[], firstIndex: number, secondIndex: number) {
+function moveItem<T>(items: T[], fromIndex: number, toIndex: number) {
   const nextItems = [...items];
-  [nextItems[firstIndex], nextItems[secondIndex]] = [
-    nextItems[secondIndex],
-    nextItems[firstIndex],
-  ];
+  const [item] = nextItems.splice(fromIndex, 1);
+  nextItems.splice(toIndex, 0, item);
   return nextItems;
 }
 
@@ -66,6 +63,7 @@ function ChannelForm({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const router = useRouter();
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [messageIsError, setMessageIsError] = useState(false);
@@ -75,20 +73,28 @@ function ChannelForm({
   const [embedUrls, setEmbedUrls] = useState<string[]>(
     channel?.embedUrls.length ? channel.embedUrls : [""],
   );
+  const [embedSourceIds, setEmbedSourceIds] = useState<string[]>(
+    channel?.embedSourceIds ?? [],
+  );
+  const [embedSourceActive, setEmbedSourceActive] = useState<boolean[]>(
+    channel?.embedSourceActive.length
+      ? channel.embedSourceActive
+      : channel?.embedUrls.map(() => true) ?? [true],
+  );
   const [embedCodes, setEmbedCodes] = useState<string[]>(
     channel?.embedUrls.map(iframeCodeForUrl) ?? [""],
   );
   const [draggedOption, setDraggedOption] = useState<number | null>(null);
   const [dropTargetOption, setDropTargetOption] = useState<number | null>(null);
+  const [sourcePendingId, setSourcePendingId] = useState("");
   const [preview, setPreview] = useState<{
     url: string;
     option: number;
-    sandbox: string | null;
     referrerPolicy: EmbedReferrerPolicy;
   } | null>(null);
   const [previewError, setPreviewError] = useState("");
 
-  function reorderOptions(fromIndex: number, toIndex: number) {
+  async function reorderOptions(fromIndex: number, toIndex: number) {
     if (
       fromIndex === toIndex ||
       fromIndex < 0 ||
@@ -99,10 +105,67 @@ function ChannelForm({
       return;
     }
 
-    setEmbedUrls((current) => swapItems(current, fromIndex, toIndex));
-    setEmbedCodes((current) => swapItems(current, fromIndex, toIndex));
+    const sourceId = embedSourceIds[fromIndex];
+    if (channel && sourceId) {
+      setSourcePendingId(sourceId);
+      const step = toIndex < fromIndex ? -1 : 1;
+      let currentIndex = fromIndex;
+      let operationMessage = "Ordem da opção atualizada.";
+      while (currentIndex !== toIndex) {
+        const operation = step < 0 ? "move-up" : "move-down";
+        const result = await updateChannelSourceAction(channel.id, sourceId, operation);
+        if (!result.success) {
+          setSourcePendingId("");
+          setMessage(result.message);
+          setMessageIsError(true);
+          router.refresh();
+          return;
+        }
+        operationMessage = result.message;
+        currentIndex += step;
+      }
+      setSourcePendingId("");
+      setMessage(operationMessage);
+      setMessageIsError(false);
+      router.refresh();
+    }
+
+    setEmbedUrls((current) => moveItem(current, fromIndex, toIndex));
+    setEmbedSourceIds((current) => moveItem(current, fromIndex, toIndex));
+    setEmbedSourceActive((current) => moveItem(current, fromIndex, toIndex));
+    setEmbedCodes((current) => moveItem(current, fromIndex, toIndex));
     setDraggedOption(null);
     setDropTargetOption(null);
+  }
+
+  async function setOptionVisibility(index: number, active: boolean) {
+    const sourceId = embedSourceIds[index];
+    if (!channel || !sourceId) {
+      setEmbedSourceActive((current) => {
+        const next = [...current];
+        next[index] = active;
+        return next;
+      });
+      return;
+    }
+
+    setSourcePendingId(sourceId);
+    const result = await updateChannelSourceAction(
+      channel.id,
+      sourceId,
+      active ? "reactivate" : "hide",
+    );
+    setSourcePendingId("");
+    setMessage(result.message);
+    setMessageIsError(!result.success);
+    if (result.success) {
+      setEmbedSourceActive((current) => {
+        const next = [...current];
+        next[index] = active;
+        return next;
+      });
+      router.refresh();
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -140,7 +203,6 @@ function ChannelForm({
       setPreview({
         url,
         option,
-        sandbox: policy.sandbox,
         referrerPolicy: policy.referrerPolicy,
       });
     } catch {
@@ -196,11 +258,17 @@ function ChannelForm({
           <option disabled value="">
             Selecione uma categoria
           </option>
-          {sortedCategories.map((category) => (
-            <option key={category.slug} value={category.slug}>
-              {category.name}
-            </option>
-          ))}
+          {sortedCategories
+            .filter((category) => category.isActive || category.slug === channel?.categorySlug)
+            .map((category) => (
+              <option
+                disabled={!category.isActive}
+                key={category.slug}
+                value={category.slug}
+              >
+                {category.name}{category.isActive ? "" : " (oculta)"}
+              </option>
+            ))}
         </select>
 
         <span className="channel-form__section-label">Opções de embed</span>
@@ -264,6 +332,14 @@ function ChannelForm({
               }}
             >
               <div className="channel-form__stream-option-heading">
+              <span
+                className={
+                  "channel-form__source-status" +
+                  (embedSourceActive[index] ? " is-visible" : " is-hidden")
+                }
+              >
+                {embedSourceActive[index] ? "Visível" : "Oculta"}
+              </span>
               <label htmlFor={`channel-embed-${index}`}>
                 {embedMode === "url" ? "URL do embed" : "Código do embed"} — Opção {index + 1}
               </label>
@@ -290,8 +366,8 @@ function ChannelForm({
                     <button
                       aria-label={`Mover opção ${index + 1} para cima`}
                       className="channel-form__move-option"
-                      disabled={index === 0}
-                      onClick={() => reorderOptions(index, index - 1)}
+                      disabled={index === 0 || Boolean(sourcePendingId)}
+                      onClick={() => void reorderOptions(index, index - 1)}
                       title="Mover para cima"
                       type="button"
                     >
@@ -300,8 +376,8 @@ function ChannelForm({
                     <button
                       aria-label={`Mover opção ${index + 1} para baixo`}
                       className="channel-form__move-option"
-                      disabled={index === embedUrls.length - 1}
-                      onClick={() => reorderOptions(index, index + 1)}
+                      disabled={index === embedUrls.length - 1 || Boolean(sourcePendingId)}
+                      onClick={() => void reorderOptions(index, index + 1)}
                       title="Mover para baixo"
                       type="button"
                     >
@@ -311,6 +387,11 @@ function ChannelForm({
                 )}
               </div>
               <div className="channel-form__embed-row">
+                <input
+                  name="embedSourceActive"
+                  type="hidden"
+                  value={embedSourceActive[index] ? "true" : "false"}
+                />
                 {embedMode === "url" ? (
                   <input
                     autoComplete="url"
@@ -360,14 +441,23 @@ function ChannelForm({
                   />
                 )}
                 <button
-                  aria-label={`Testar player da opção ${index + 1}`}
+                  aria-label={`Testar Opção ${index + 1}`}
                   className="outline-action"
                   disabled={previewPending}
                   onClick={() => testEmbedOption(index)}
                   type="button"
                 >
                   <Play aria-hidden="true" size={15} fill="currentColor" />
-                  Testar player
+                  Testar
+                </button>
+                <button
+                  aria-label={(embedSourceActive[index] ? "Ocultar" : "Reativar") + ` Opção ${index + 1}`}
+                  className="outline-action"
+                  disabled={Boolean(sourcePendingId)}
+                  onClick={() => void setOptionVisibility(index, !embedSourceActive[index])}
+                  type="button"
+                >
+                  {embedSourceActive[index] ? "Ocultar" : "Reativar"}
                 </button>
                 {embedUrls.length > 1 && (
                   <button
@@ -375,6 +465,8 @@ function ChannelForm({
                     className="icon-button icon-button--danger channel-form__remove-option"
                     onClick={() => {
                       setEmbedUrls((current) => current.filter((_, item) => item !== index));
+                      setEmbedSourceIds((current) => current.filter((_, item) => item !== index));
+                      setEmbedSourceActive((current) => current.filter((_, item) => item !== index));
                       setEmbedCodes((current) => current.filter((_, item) => item !== index));
                     }}
                     title={`Remover opção ${index + 1}`}
@@ -391,6 +483,8 @@ function ChannelForm({
           className="secondary-button channel-form__add-option"
           onClick={() => {
             setEmbedUrls((current) => [...current, ""]);
+            setEmbedSourceIds((current) => [...current, ""]);
+            setEmbedSourceActive((current) => [...current, true]);
             setEmbedCodes((current) => [...current, ""]);
           }}
           type="button"
@@ -464,7 +558,7 @@ function ChannelForm({
           <button className="secondary-button" onClick={onClose} type="button">
             Cancelar
           </button>
-          <button className="primary-button" disabled={pending} type="submit">
+          <button className="primary-button" disabled={pending || Boolean(sourcePendingId)} type="submit">
             {pending ? "Salvando..." : channel ? "Salvar alterações" : "Salvar canal"}
           </button>
         </div>
@@ -501,9 +595,6 @@ function ChannelForm({
               className="channel-player__frame"
               src={preview.url}
               title={"Prévia do player do canal " + (channel?.name || "novo")}
-              sandbox={preview.sandbox}
-              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-              allowFullScreen
               referrerPolicy={preview.referrerPolicy}
             />
             <p className="channel-player__notice">
@@ -519,13 +610,14 @@ function ChannelForm({
 export function AdminPanel({
   channels,
   categories,
+  pendingIssueCounts,
 }: {
   channels: AdminChannel[];
   categories: AdminCategory[];
+  pendingIssueCounts: Record<string, number>;
 }) {
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(false);
-  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [editing, setEditing] = useState<AdminChannel | null>(null);
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -606,14 +698,6 @@ export function AdminPanel({
             <h2>Canais</h2>
           </div>
           <div className="admin-list-panel__heading-actions">
-            <button
-              className="secondary-button"
-              onClick={() => setCategoriesOpen(true)}
-              type="button"
-            >
-              <Tags aria-hidden="true" size={18} />
-              Categorias
-            </button>
             <button className="primary-button" onClick={startNewChannel} type="button">
               <Plus aria-hidden="true" size={19} />
               Adicionar canal
@@ -667,7 +751,7 @@ export function AdminPanel({
 
         <div className="admin-channel-list">
           {filteredChannels.map((channel) => (
-            <article className="admin-channel-row" key={channel.id}>
+            <article className="admin-channel-row" data-channel-id={channel.id} key={channel.id}>
               <div className="admin-channel-row__thumb">
                 {channel.thumbnailUrl ? (
                   <img src={channel.thumbnailUrl} alt="" loading="lazy" />
@@ -680,6 +764,11 @@ export function AdminPanel({
                 <p>
                   {channel.categoryName} · {channel.embedUrls.length} {channel.embedUrls.length === 1 ? "opção" : "opções"} de player
                 </p>
+                {(pendingIssueCounts[channel.id] ?? 0) > 0 && (
+                  <span className="admin-channel-row__issues">
+                    {pendingIssueCounts[channel.id]} pendências
+                  </span>
+                )}
               </div>
               <span
                 className={
@@ -807,46 +896,6 @@ export function AdminPanel({
                 setFormOpen(false);
                 router.refresh();
               }}
-            />
-          </aside>
-        </div>
-      )}
-      {categoriesOpen && (
-        <div className="admin-drawer-wrap">
-          <button
-            aria-label="Fechar gerenciamento de categorias"
-            className="admin-drawer-backdrop"
-            onClick={() => setCategoriesOpen(false)}
-            type="button"
-          />
-          <aside
-            aria-labelledby="category-manager-title"
-            aria-modal="true"
-            className="admin-drawer"
-            role="dialog"
-          >
-            <header className="admin-drawer__heading">
-              <div>
-                <p className="eyebrow">Organização do catálogo</p>
-                <h2 id="category-manager-title">Gerenciar categorias</h2>
-              </div>
-              <button
-                aria-label="Fechar gerenciamento de categorias"
-                className="icon-button"
-                onClick={() => setCategoriesOpen(false)}
-                type="button"
-              >
-                <X aria-hidden="true" size={22} />
-              </button>
-            </header>
-            <AdminCategoriesManager
-              categories={categories}
-              channels={channels}
-              onChanged={() => {
-                setCategoryFilter("");
-                router.refresh();
-              }}
-              onClose={() => setCategoriesOpen(false)}
             />
           </aside>
         </div>

@@ -16,6 +16,7 @@ export type CategoryOption = {
 
 export type AdminCategory = CategoryOption & {
   id: number;
+  isActive: boolean;
 };
 
 export type ChannelCategory = CategoryOption & {
@@ -37,9 +38,9 @@ const portugueseCollator = new Intl.Collator("pt-BR", {
   numeric: true,
 });
 
-export function sortCategories(
-  categories: readonly CategoryOption[] = CHANNEL_CATEGORIES,
-): CategoryOption[] {
+export function sortCategories<T extends CategoryOption = ChannelCategory>(
+  categories: readonly T[] = CHANNEL_CATEGORIES as unknown as readonly T[],
+): T[] {
   return [...categories].sort((a, b) =>
     portugueseCollator.compare(a.name, b.name),
   );

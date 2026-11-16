@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type Route } from "@playwright/test";
 import localSupabase from "../../scripts/local-supabase.cjs";
 
 const { readLocalSupabaseStatus } = localSupabase;
@@ -21,6 +21,35 @@ let crudChannelName = "";
 let crudChannelSlug = "";
 let nativeMultiVideoChannel: TestChannel;
 const channelIds: string[] = [];
+const embedTestDocument = `<!doctype html>
+<html><body>
+  <button id="play">Play</button>
+  <output id="playback-state">Parado</output>
+  <button id="popup">Abrir nova aba</button>
+  <button id="top-navigation">Redirecionar página</button>
+  <script>
+    document.getElementById("play").addEventListener("click", () => {
+      document.getElementById("playback-state").textContent = "Reproduzindo";
+    });
+    document.getElementById("popup").addEventListener("click", () => {
+      let popup = null;
+      try { popup = window.open("https://sandbox-escape.test/pop-up", "_blank"); } catch {}
+      document.body.dataset.popupOpened = String(popup !== null);
+    });
+    document.getElementById("top-navigation").addEventListener("click", () => {
+      try { window.top?.location.assign("https://sandbox-escape.test/escape"); } catch {}
+      document.body.dataset.topNavigationAttempted = "true";
+    });
+  </script>
+</body></html>`;
+
+async function fulfillEmbedDocument(route: Route) {
+  await route.fulfill({
+    status: 200,
+    contentType: "text/html",
+    body: embedTestDocument,
+  });
+}
 
 async function signIn(page: Page, user: TestUser) {
   await page.goto("/admin/login");
@@ -253,6 +282,35 @@ test.afterAll(async () => {
   }
 });
 
+test("players externos podem abrir pop-ups necessários", async ({
+  page,
+  context,
+}) => {
+  await page.route("https://v1.rdembed.lat/**", fulfillEmbedDocument);
+  await context.route("https://sandbox-escape.test/**", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "text/html",
+      body: "<!doctype html><title>Pop-up do player</title>",
+    }),
+  );
+  await page.goto("/canais/" + navigationChannel.slug);
+
+  const player = page.locator("iframe.channel-player__frame");
+  const embeddedPage = page.frameLocator("iframe.channel-player__frame");
+  await expect(player).not.toHaveAttribute("sandbox");
+  const popupPromise = page.waitForEvent("popup");
+  await embeddedPage.getByRole("button", { name: "Abrir nova aba" }).click();
+  const popup = await popupPromise;
+  await expect(embeddedPage.locator("body")).toHaveAttribute(
+    "data-popup-opened",
+    "true",
+  );
+  await expect(popup).toHaveTitle("Pop-up do player");
+  await popup.close();
+  await expect.poll(() => context.pages().length).toBe(1);
+});
+
 test("bloqueia acesso administrativo sem permissão", async ({ page }) => {
   await page.goto("/admin/canais");
   await expect(page).toHaveURL(/\/admin\/login/);
@@ -288,657 +346,93 @@ test("bloqueia acesso administrativo sem permissão", async ({ page }) => {
   await expect(page).toHaveURL(/\/admin\/login/);
 });
 
-test("mantém autoplay, opção 2 e atualização no computador, celular e Modo TV", async ({
-  page,
-  browser,
-}) => {
+test("Modo TV navega por setas, atualiza a fonte selecionada e volta ao cartão de origem", async ({ page }) => {
+  const manifestRequests: string[] = [];
+  page.on("request", (request) => {
+    try {
+      if (new URL(request.url()).pathname.toLowerCase().endsWith(".m3u8")) {
+        manifestRequests.push(request.url());
+      }
+    } catch {
+      // Ignore non-URL requests.
+    }
+  });
   await page.route("https://la18hd.su/**", (route) => route.abort());
   await page.route("https://ww0.embedtv.cc/**", (route) => route.abort());
   await page.route("https://v1.rdembed.lat/**", (route) => route.abort());
-
-  await page.goto("/canais/" + premiereChannel.slug + "?from=tv");
-  const player = page.getByTitle("Player do canal " + premiereChannel.name);
-  const optionOne = page.getByRole("button", { name: "Opção 1" });
-  const optionTwo = page.getByRole("button", { name: "Opção 2" });
-  const refreshButton = page.getByRole("button", { name: "Atualizar player" });
-  const fullscreenButton = page.locator(".channel-player__fullscreen");
-  const audioButton = page.locator(".channel-player__audio");
-  const playerUrl = page.url();
-
-  await expect(optionOne).toBeFocused();
-  await expect(player).toHaveAttribute("allow", /autoplay/);
-  await page.keyboard.press("ArrowRight");
-  await expect(optionTwo).toBeFocused();
-  await expect(optionTwo).toHaveAttribute("aria-pressed", "true");
-  await expect(player).toHaveAttribute("src", premiereOptionTwoUrl);
-  await expect(player).toHaveAttribute("allow", /autoplay/);
-  await expect(audioButton).toBeDisabled();
-  await expect(page.getByText("Use o controle de som do player")).toBeVisible();
-
-  const frameBeforeFullscreen = await player.elementHandle();
-  await page.keyboard.press("ArrowDown");
-  await expect(refreshButton).toBeFocused();
-  await page.keyboard.press("ArrowRight");
-  await expect(fullscreenButton).toBeFocused();
+  await page.goto("/tv");
+  await page.getByRole("searchbox", { name: "Buscar canal pelo nome" }).fill(premiereChannel.name);
+  const originCard = page.getByRole("link", { name: "Assistir " + premiereChannel.name });
+  await originCard.focus();
+  const listScrollY = await page.evaluate(() => window.scrollY);
   await page.keyboard.press("Enter");
-  await expect.poll(() =>
-    page.evaluate(() => document.fullscreenElement?.tagName === "IFRAME"),
-  ).toBe(true);
-  await expect(fullscreenButton).toHaveText("Sair da tela cheia");
-  expect(await frameBeforeFullscreen?.evaluate((frame) => frame.isConnected)).toBe(true);
-  expect(page.url()).toBe(playerUrl);
 
-  await page.evaluate(() => document.exitFullscreen());
-  await expect.poll(() =>
-    page.evaluate(() => document.fullscreenElement === null),
-  ).toBe(true);
-  await expect(fullscreenButton).toHaveText("Tela cheia");
-
-  const frameBeforeRefresh = await player.elementHandle();
-  await refreshButton.click();
-  expect(await frameBeforeRefresh?.evaluate((frame) => frame.isConnected)).toBe(false);
-  await expect(player).toHaveAttribute("src", premiereOptionTwoUrl);
-  await expect(optionTwo).toHaveAttribute("aria-pressed", "true");
-  expect(page.url()).toBe(playerUrl);
-
-  await page.goto("/canais/" + premiereChannel.slug);
-  const desktopPlayer = page.getByTitle("Player do canal " + premiereChannel.name);
-  const desktopOptionTwo = page.getByRole("button", { name: "Opção 2" });
-  const desktopRefresh = page.getByRole("button", { name: "Atualizar player" });
-  const desktopUrl = page.url();
-  await desktopOptionTwo.click();
-  await expect(desktopPlayer).toHaveAttribute("src", premiereOptionTwoUrl);
-  const desktopFrameBeforeRefresh = await desktopPlayer.elementHandle();
-  await desktopRefresh.click();
-  expect(
-    await desktopFrameBeforeRefresh?.evaluate((frame) => frame.isConnected),
-  ).toBe(false);
-  await expect(desktopPlayer).toHaveAttribute("src", premiereOptionTwoUrl);
-  await expect(desktopOptionTwo).toHaveAttribute("aria-pressed", "true");
-  expect(page.url()).toBe(desktopUrl);
-
-  const mobileContext = await browser.newContext({
-    viewport: { width: 390, height: 844 },
-    isMobile: true,
-    hasTouch: true,
-    deviceScaleFactor: 3,
-  });
-  try {
-    const mobilePage = await mobileContext.newPage();
-    await mobilePage.route("https://la18hd.su/**", (route) => route.abort());
-    await mobilePage.route("https://ww0.embedtv.cc/**", (route) => route.abort());
-    await mobilePage.goto(
-      new URL("/canais/" + premiereChannel.slug, page.url()).toString(),
-    );
-    const mobilePlayer = mobilePage.getByTitle(
-      "Player do canal " + premiereChannel.name,
-    );
-    const mobileOptionTwo = mobilePage.getByRole("button", { name: "Opção 2" });
-    const mobileRefresh = mobilePage.getByRole("button", {
-      name: "Atualizar player",
-    });
-    const mobileUrl = mobilePage.url();
-    await mobileOptionTwo.tap();
-    await expect(mobilePlayer).toHaveAttribute("src", premiereOptionTwoUrl);
-    const mobileFrameBeforeRefresh = await mobilePlayer.elementHandle();
-    await mobileRefresh.tap();
-    expect(
-      await mobileFrameBeforeRefresh?.evaluate((frame) => frame.isConnected),
-    ).toBe(false);
-    await expect(mobilePlayer).toHaveAttribute("src", premiereOptionTwoUrl);
-    await expect(mobileOptionTwo).toHaveAttribute("aria-pressed", "true");
-    expect(mobilePage.url()).toBe(mobileUrl);
-  } finally {
-    await mobileContext.close();
-  }
-
-  await page.goto("/canais/" + navigationChannel.slug + "?from=tv");
-  const singleOptionPlayer = page.getByTitle(
-    "Player do canal " + navigationChannel.name,
-  );
-  const singleRefreshButton = page.getByRole("button", {
-    name: "Atualizar player",
-  });
-  const singleFullscreenButton = page.locator(".channel-player__fullscreen");
-  const singleFrame = await singleOptionPlayer.elementHandle();
-  const singleUrl = page.url();
-
-  await expect(singleRefreshButton).toBeFocused();
-  await page.keyboard.press("ArrowRight");
-  await expect(singleFullscreenButton).toBeFocused();
-  await page.keyboard.press("Enter");
-  await expect.poll(() =>
-    page.evaluate(() => document.fullscreenElement?.tagName === "IFRAME"),
-  ).toBe(true);
-  await expect(singleFullscreenButton).toHaveText("Sair da tela cheia");
-  expect(await singleFrame?.evaluate((frame) => frame.isConnected)).toBe(true);
-  await page.evaluate(() => document.exitFullscreen());
-  await expect.poll(() =>
-    page.evaluate(() => document.fullscreenElement === null),
-  ).toBe(true);
-  await expect(singleFullscreenButton).toHaveText("Tela cheia");
-  expect(await singleFrame?.evaluate((frame) => frame.isConnected)).toBe(true);
-  expect(page.url()).toBe(singleUrl);
-});
-
-test("mantém o áudio e o foco no vídeo próprio, inclusive no Modo TV", async ({
-  page,
-}) => {
-  await page.route("https://media.canalmix.test/**", (route) => route.abort());
-  await page.goto("/canais/" + nativeVideoChannel.slug);
-
-  const video = page.locator("video.channel-player__video");
-  const soundButton = page.locator(".channel-player__audio");
-  const originalVideo = await video.elementHandle();
-  await expect(soundButton).toBeVisible();
-  await expect(soundButton).toBeEnabled();
-  const soundButtonPosition = await soundButton.boundingBox();
-  await soundButton.click();
-  await expect(soundButton).toHaveText("Ativar som");
-  await expect(video).toHaveJSProperty("muted", true);
-  await expect(soundButton).toBeFocused();
-  const mutedButtonPosition = await soundButton.boundingBox();
-  expect(mutedButtonPosition?.x).toBe(soundButtonPosition?.x);
-  expect(mutedButtonPosition?.y).toBe(soundButtonPosition?.y);
-  expect(mutedButtonPosition?.width).toBe(soundButtonPosition?.width);
-  expect(await originalVideo?.evaluate((element) => element.isConnected)).toBe(true);
-
-  await soundButton.click();
-  await expect(soundButton).toHaveText("Silenciar");
-  await expect(video).toHaveJSProperty("muted", false);
-  await expect(soundButton).toBeFocused();
-
-  await page.goto("/canais/" + nativeVideoChannel.slug + "?from=tv");
-  const tvVideo = page.locator("video.channel-player__video");
-  const tvSoundButton = page.locator(".channel-player__audio");
-  const refreshButton = page.getByRole("button", { name: "Atualizar player" });
-  const fullscreenButton = page.locator(".channel-player__fullscreen");
-  const playerUrl = page.url();
-
-  await expect(refreshButton).toBeFocused();
-  await page.keyboard.press("ArrowRight");
-  await expect(fullscreenButton).toBeFocused();
-  await page.keyboard.press("Enter");
-  await expect.poll(() =>
-    page.evaluate(() => document.fullscreenElement === document.querySelector("video.channel-player__video")),
-  ).toBe(true);
-
-  await page.keyboard.press("Escape");
-  await expect.poll(() =>
-    page.evaluate(() => document.fullscreenElement === null),
-  ).toBe(true);
-  await expect(fullscreenButton).toHaveText("Tela cheia");
-
-  await page.keyboard.press("ArrowRight");
-  await expect(tvSoundButton).toBeFocused();
-  await page.keyboard.press("Enter");
-  await expect(tvSoundButton).toHaveText("Ativar som");
-  await expect(tvVideo).toHaveJSProperty("muted", true);
-  await expect(tvSoundButton).toBeFocused();
-
-  await page.keyboard.press("ArrowLeft");
-  await expect(fullscreenButton).toBeFocused();
-  await page.keyboard.press("ArrowLeft");
-  await expect(refreshButton).toBeFocused();
-  const videoBeforeRefresh = await tvVideo.elementHandle();
-  await page.keyboard.press("Enter");
-  expect(await videoBeforeRefresh?.evaluate((element) => element.isConnected)).toBe(false);
-  await expect(tvVideo).toHaveJSProperty("muted", true);
-  await expect(tvSoundButton).toHaveText("Ativar som");
-  await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true);
-  expect(page.url()).toBe(playerUrl);
-
-});
-
-test("encerra o vídeo anterior e tenta autoplay na Opção 2 e ao atualizar", async ({
-  page,
-}) => {
-  await page.route("https://media.canalmix.test/**", (route) => route.abort());
-  await mockVideoAutoplay(page, false);
-  await page.goto("/canais/" + nativeMultiVideoChannel.slug);
-
-  const video = page.locator("video.channel-player__video");
   const optionTwo = page.getByRole("button", { name: "Opção 2" });
   const refresh = page.getByRole("button", { name: "Atualizar player" });
-  const originalUrl = page.url();
-  await expect(video).toHaveAttribute(
-    "src",
-    "https://media.canalmix.test/audio-option-one.mp4",
-  );
-  const firstVideo = await video.elementHandle();
-  await video.evaluate((element) =>
-    element.dispatchEvent(new Event("canplay", { bubbles: true })),
-  );
-  await expect.poll(() =>
-    page.evaluate(() => {
-      const testWindow = window as Window & {
-        __mediaPlayAttempts?: Array<{ muted: boolean }>;
-      };
-      return testWindow.__mediaPlayAttempts?.length ?? 0;
-    }),
-  ).toBe(1);
-
-  await optionTwo.click();
-  expect(await firstVideo?.evaluate((element) => element.isConnected)).toBe(false);
-  expect(
-    await firstVideo?.evaluate((element) => (element as HTMLVideoElement).paused),
-  ).toBe(true);
-  await expect(video).toHaveAttribute(
-    "src",
-    "https://media.canalmix.test/audio-option-two.mp4",
-  );
-  const secondVideo = await video.elementHandle();
-  await video.evaluate((element) =>
-    element.dispatchEvent(new Event("canplay", { bubbles: true })),
-  );
-  await expect.poll(() =>
-    page.evaluate(() => {
-      const testWindow = window as Window & {
-        __mediaPlayAttempts?: Array<{ muted: boolean }>;
-      };
-      return testWindow.__mediaPlayAttempts?.length ?? 0;
-    }),
-  ).toBe(2);
-
-  await refresh.click();
-  expect(await secondVideo?.evaluate((element) => element.isConnected)).toBe(false);
-  expect(
-    await secondVideo?.evaluate((element) => (element as HTMLVideoElement).paused),
-  ).toBe(true);
-  await expect(video).toHaveAttribute(
-    "src",
-    "https://media.canalmix.test/audio-option-two.mp4",
-  );
+  const player = page.locator("video.channel-player__video");
+  await expect(page.getByRole("button", { name: "Opção 1" })).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(optionTwo).toBeFocused();
+  await expect(player).toHaveAttribute("data-hls-mode", "hls.js");
+  await expect.poll(() => manifestRequests.filter((url) => url === premiereOptionTwoUrl).length).toBeGreaterThan(0);
+  await expect(page.locator(".channel-player__audio, .channel-player__fullscreen")).toHaveCount(0);
+  await page.keyboard.press("ArrowDown");
+  await expect(refresh).toBeFocused();
+  const videoBeforeRefresh = await player.elementHandle();
+  await page.keyboard.press("Enter");
+  expect(await videoBeforeRefresh?.evaluate((video) => video.isConnected)).toBe(false);
+  await expect(player).toHaveAttribute("data-hls-mode", "hls.js");
+  await expect.poll(() => manifestRequests.filter((url) => url === premiereOptionTwoUrl).length).toBeGreaterThan(1);
   await expect(optionTwo).toHaveAttribute("aria-pressed", "true");
-  await video.evaluate((element) =>
-    element.dispatchEvent(new Event("canplay", { bubbles: true })),
-  );
-  await expect.poll(() =>
-    page.evaluate(() => {
-      const testWindow = window as Window & {
-        __mediaPlayAttempts?: Array<{ muted: boolean }>;
-      };
-      return testWindow.__mediaPlayAttempts?.length ?? 0;
-    }),
-  ).toBe(3);
-  expect(page.url()).toBe(originalUrl);
-});
+  await expect(refresh).toBeFocused();
 
-test("mantém tela cheia e tenta novamente após atualizar o mesmo vídeo", async ({
-  page,
-}) => {
-  await page.route("https://media.canalmix.test/**", (route) => route.abort());
-  await page.addInitScript(() => {
-    type TestWindow = Window & { __fullscreenTarget?: Element | null };
-    const testWindow = window as TestWindow;
-    testWindow.__fullscreenTarget = null;
-
+  await page.evaluate(() => {
+    const currentPlayer = document.querySelector("video.channel-player__video");
     Object.defineProperty(document, "fullscreenElement", {
       configurable: true,
-      get: () => testWindow.__fullscreenTarget ?? null,
+      get: () => document.body.dataset.testFullscreen === "true" ? currentPlayer : null,
     });
     Object.defineProperty(document, "exitFullscreen", {
       configurable: true,
       value: () => {
-        testWindow.__fullscreenTarget = null;
-        document.dispatchEvent(new Event("fullscreenchange"));
+        document.body.dataset.testFullscreen = "false";
         return Promise.resolve();
       },
     });
-    Object.defineProperty(HTMLElement.prototype, "requestFullscreen", {
-      configurable: true,
-      value(this: HTMLElement) {
-        testWindow.__fullscreenTarget = this;
-        document.dispatchEvent(new Event("fullscreenchange"));
-        return Promise.resolve();
-      },
-    });
+    document.body.dataset.testFullscreen = "true";
   });
-  await mockVideoAutoplay(page, true);
-  await page.goto("/canais/" + nativeVideoChannel.slug);
-
-  const video = page.locator("video.channel-player__video");
-  const fullscreen = page.locator(".channel-player__fullscreen");
-  const refresh = page.getByRole("button", { name: "Atualizar player" });
-  const pageUrl = page.url();
-  await video.evaluate((element) =>
-    element.dispatchEvent(new Event("canplay", { bubbles: true })),
-  );
-  await expect(video).toHaveJSProperty("muted", true);
-  await expect(fullscreen).toHaveText("Tela cheia");
-  await fullscreen.click();
-  await expect(fullscreen).toHaveText("Sair da tela cheia");
-  await expect.poll(() =>
-    page.evaluate(() => document.fullscreenElement === document.querySelector("video")),
-  ).toBe(true);
-
-  const oldVideo = await video.elementHandle();
-  await refresh.click();
-  expect(await oldVideo?.evaluate((element) => element.isConnected)).toBe(false);
-  await expect(video).toHaveJSProperty("muted", true);
-  await expect(fullscreen).toHaveText("Sair da tela cheia");
-  await expect.poll(() =>
-    page.evaluate(() => document.fullscreenElement === document.querySelector("video")),
-  ).toBe(true);
-  await video.evaluate((element) =>
-    element.dispatchEvent(new Event("canplay", { bubbles: true })),
-  );
-  await expect.poll(() =>
-    page.evaluate(() => {
-      const testWindow = window as Window & {
-        __mediaPlayAttempts?: Array<{ muted: boolean }>;
-      };
-      return testWindow.__mediaPlayAttempts?.map((attempt) => attempt.muted) ?? [];
-    }),
-  ).toEqual([false, true, true]);
-  expect(page.url()).toBe(pageUrl);
+  const channelUrl = page.url();
+  await page.keyboard.press("Escape");
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true);
+  expect(page.url()).toBe(channelUrl);
+  await page.keyboard.press("Escape");
+  await expect(page).toHaveURL(/\/tv\?/);
+  await expect(page.getByRole("link", { name: "Assistir " + premiereChannel.name })).toBeFocused();
+  expect(await page.evaluate(() => window.scrollY)).toBe(listScrollY);
 });
 
-test("tenta autoplay nativo com som, fallback mudo no celular e atualização no Modo TV", async ({
-  page,
-  browser,
-}) => {
+test("player de vídeo próprio mantém autoplay sem controles extras de áudio ou tela cheia", async ({ page }) => {
   await page.route("https://media.canalmix.test/**", (route) => route.abort());
-  await mockVideoAutoplay(page, false);
-  await page.goto("/canais/" + nativeVideoChannel.slug);
-
-  const desktopVideo = page.locator("video.channel-player__video");
-  await expect(desktopVideo).toBeVisible();
-  await desktopVideo.evaluate((video) =>
-    video.dispatchEvent(new Event("canplay", { bubbles: true })),
-  );
-  await expect.poll(() =>
-    page.evaluate(() => {
-      const testWindow = window as Window & {
-        __mediaPlayAttempts?: Array<{ muted: boolean }>;
-      };
-      return testWindow.__mediaPlayAttempts?.map((attempt) => attempt.muted) ?? [];
-    }),
-  ).toEqual([false]);
-  await expect(page.locator(".channel-player__audio")).toHaveText("Silenciar");
-
-  const mobileContext = await browser.newContext({
-    viewport: { width: 390, height: 844 },
-    isMobile: true,
-    hasTouch: true,
-    deviceScaleFactor: 3,
-  });
-  try {
-    const mobilePage = await mobileContext.newPage();
-    await mobilePage.route("https://media.canalmix.test/**", (route) =>
-      route.abort(),
-    );
-    await mockVideoAutoplay(mobilePage, true);
-    await mobilePage.goto(
-      new URL("/canais/" + nativeVideoChannel.slug, page.url()).toString(),
-    );
-    const mobileVideo = mobilePage.locator("video.channel-player__video");
-    const mobileSound = mobilePage.locator(".channel-player__audio");
-    await mobileVideo.evaluate((video) =>
-      video.dispatchEvent(new Event("canplay", { bubbles: true })),
-    );
-    await expect.poll(() =>
-      mobilePage.evaluate(() => {
-        const testWindow = window as Window & {
-          __mediaPlayAttempts?: Array<{ muted: boolean }>;
-        };
-        return testWindow.__mediaPlayAttempts?.map((attempt) => attempt.muted) ?? [];
-      }),
-    ).toEqual([false, true]);
-    await expect(mobileVideo).toHaveJSProperty("muted", true);
-    await expect(mobileSound).toHaveText("Ativar som");
-    await mobileSound.tap();
-    await expect(mobileVideo).toHaveJSProperty("muted", false);
-    await expect(mobileSound).toHaveText("Silenciar");
-  } finally {
-    await mobileContext.close();
-  }
-
   await mockVideoAutoplay(page, true);
-  const tvUrl = new URL(
-    "/canais/" + nativeVideoChannel.slug + "?from=tv",
-    page.url(),
-  ).toString();
-  await page.goto(tvUrl);
-  const tvVideo = page.locator("video.channel-player__video");
-  const tvSound = page.locator(".channel-player__audio");
+  await page.goto("/canais/" + nativeVideoChannel.slug);
+  const video = page.locator("video.channel-player__video");
   const refresh = page.getByRole("button", { name: "Atualizar player" });
-  await expect(refresh).toBeFocused();
-  await tvVideo.evaluate((video) =>
-    video.dispatchEvent(new Event("canplay", { bubbles: true })),
-  );
-  await expect.poll(() =>
-    page.evaluate(() => {
-      const testWindow = window as Window & {
-        __mediaPlayAttempts?: Array<{ muted: boolean }>;
-      };
-      return testWindow.__mediaPlayAttempts?.map((attempt) => attempt.muted) ?? [];
-    }),
-  ).toEqual([false, true]);
-  await expect(tvSound).toHaveText("Ativar som");
-
-  const firstTvVideo = await tvVideo.elementHandle();
-  await page.keyboard.press("Enter");
-  expect(await firstTvVideo?.evaluate((video) => video.isConnected)).toBe(false);
-  const refreshedTvVideo = page.locator("video.channel-player__video");
-  await expect(refreshedTvVideo).toHaveJSProperty("muted", true);
-  await refreshedTvVideo.evaluate((video) =>
-    video.dispatchEvent(new Event("canplay", { bubbles: true })),
-  );
-  await expect.poll(() =>
-    page.evaluate(() => {
-      const testWindow = window as Window & {
-        __mediaPlayAttempts?: Array<{ muted: boolean }>;
-      };
-      return testWindow.__mediaPlayAttempts?.map((attempt) => attempt.muted) ?? [];
-    }),
-  ).toEqual([false, true, true]);
-  await expect(tvSound).toHaveText("Ativar som");
-  expect(page.url()).toBe(tvUrl);
-
-  await page.keyboard.press("ArrowRight");
-  await expect(page.locator(".channel-player__fullscreen")).toBeFocused();
-  await page.keyboard.press("ArrowRight");
-  await expect(tvSound).toBeFocused();
-  await page.keyboard.press("Enter");
-  await expect(tvSound).toHaveText("Silenciar");
-  await expect(refreshedTvVideo).toHaveJSProperty("muted", false);
+  await video.evaluate((element) => element.dispatchEvent(new Event("canplay", { bubbles: true })));
+  await expect(video).toHaveJSProperty("muted", true);
+  await expect(video).toHaveAttribute("controls", "");
+  await expect(page.locator(".channel-player__audio, .channel-player__fullscreen")).toHaveCount(0);
+  const firstVideo = await video.elementHandle();
+  await refresh.click();
+  expect(await firstVideo?.evaluate((element) => element.isConnected)).toBe(false);
+  await expect(video).toHaveJSProperty("muted", true);
 });
-
-test("inicia YouTube pela API, tenta mudo se o autoplay com som for bloqueado", async ({
-  page,
-}) => {
-  await page.addInitScript(() => {
-    type MockPlayer = {
-      muted: boolean;
-      playing: boolean;
-      playAttempts: number;
-      mute(): void;
-      unMute(): void;
-      isMuted(): boolean;
-      playVideo(): void;
-      pauseVideo(): void;
-      getPlayerState(): number;
-      destroy(): void;
-    };
-    type MockWindow = Window & {
-      __youtubePlayers?: MockPlayer[];
-      YT?: {
-        Player: new (
-          iframe: HTMLIFrameElement,
-          options: {
-            events: {
-              onReady(event: { target: MockPlayer }): void;
-              onAutoplayBlocked(event: { target: MockPlayer }): void;
-            };
-          },
-        ) => MockPlayer;
-      };
-    };
-
-    class MockYouTubePlayer {
-      muted = false;
-      playing = false;
-      playAttempts = 0;
-      autoplayBlockReported = false;
-      events: {
-        onAutoplayBlocked(event: { target: MockYouTubePlayer }): void;
-      };
-
-      constructor(
-        _iframe: HTMLIFrameElement,
-        options: {
-          events: {
-            onReady(event: { target: MockYouTubePlayer }): void;
-            onAutoplayBlocked(event: { target: MockYouTubePlayer }): void;
-          };
-        },
-      ) {
-        this.events = options.events;
-        const testWindow = window as MockWindow;
-        testWindow.__youtubePlayers?.push(this);
-        window.setTimeout(() => options.events.onReady({ target: this }), 0);
-      }
-
-      mute() {
-        this.muted = true;
-      }
-
-      unMute() {
-        this.muted = false;
-      }
-
-      isMuted() {
-        return this.muted;
-      }
-
-      playVideo() {
-        this.playAttempts += 1;
-        if (!this.muted && !this.autoplayBlockReported) {
-          this.autoplayBlockReported = true;
-          this.events.onAutoplayBlocked({ target: this });
-          return;
-        }
-        this.playing = true;
-      }
-
-      pauseVideo() {
-        this.playing = false;
-      }
-
-      getPlayerState() {
-        return this.playing ? 1 : 2;
-      }
-
-      destroy() {
-        this.playing = false;
-      }
-    }
-
-    const testWindow = window as MockWindow;
-    testWindow.__youtubePlayers = [];
-    testWindow.YT = { Player: MockYouTubePlayer };
-  });
-  await page.route("https://www.youtube.com/**", (route) => route.abort());
-  await page.goto("/canais/" + youtubeChannel.slug);
-
-  const frame = page.locator("iframe.channel-player__frame");
-  const soundButton = page.locator(".channel-player__audio");
-  const refreshButton = page.getByRole("button", { name: "Atualizar player" });
-  await expect(frame).toHaveAttribute("src", /enablejsapi=1/);
-  await expect(frame).toHaveAttribute("allow", /autoplay/);
-  await expect(soundButton).toBeEnabled();
-  await expect.poll(() =>
-    page.evaluate(() => {
-      const testWindow = window as Window & {
-        __youtubePlayers?: Array<{ muted: boolean }>;
-      };
-      return testWindow.__youtubePlayers?.length ?? 0;
-    }),
-  ).toBe(1);
-  await expect(soundButton).toHaveText("Ativar som");
-  await expect.poll(() =>
-    page.evaluate(() => {
-      const testWindow = window as Window & {
-        __youtubePlayers?: Array<{ playing: boolean; playAttempts: number }>;
-      };
-      const player = testWindow.__youtubePlayers?.[0];
-      return player ? [player.playing, player.playAttempts] : [false, 0];
-    }),
-  ).toEqual([true, 2]);
-
-  const firstFrame = await frame.elementHandle();
-  await soundButton.click();
-  await expect(soundButton).toHaveText("Silenciar");
-  await expect(soundButton).toBeFocused();
-  await expect.poll(() =>
-    page.evaluate(() => {
-      const testWindow = window as Window & {
-        __youtubePlayers?: Array<{ muted: boolean }>;
-      };
-      const players = testWindow.__youtubePlayers ?? [];
-      return players[players.length - 1]?.muted ?? false;
-    }),
-  ).toBe(false);
-  expect(await firstFrame?.evaluate((element) => element.isConnected)).toBe(true);
-
-  await page.evaluate(() => {
-    const testWindow = window as Window & {
-      __youtubePlayers?: Array<{ muted: boolean }>;
-    };
-    const players = testWindow.__youtubePlayers ?? [];
-    const currentPlayer = players[players.length - 1];
-    if (currentPlayer) {
-      currentPlayer.muted = true;
-    }
-  });
-  await expect(soundButton).toHaveText("Ativar som");
-
-  const frameBeforeRefresh = await frame.elementHandle();
-  await refreshButton.click();
-  expect(await frameBeforeRefresh?.evaluate((element) => element.isConnected)).toBe(false);
-  await expect(frame).toHaveAttribute("src", /enablejsapi=1/);
-  await expect(soundButton).toHaveText("Ativar som");
-  await expect.poll(() =>
-    page.evaluate(() => {
-      const testWindow = window as Window & {
-        __youtubePlayers?: Array<{ muted: boolean }>;
-      };
-      return testWindow.__youtubePlayers?.length ?? 0;
-    }),
-  ).toBe(2);
-  await expect.poll(() =>
-    page.evaluate(() => {
-      const testWindow = window as Window & {
-        __youtubePlayers?: Array<{ muted: boolean }>;
-      };
-      const players = testWindow.__youtubePlayers ?? [];
-      return players[players.length - 1]?.muted ?? false;
-    }),
-  ).toBe(true);
-});
-
-test("avisa quando a API de tela cheia não está disponível", async ({ page }) => {
-  await page.route("https://v1.rdembed.lat/**", (route) => route.abort());
-  await page.addInitScript(() => {
-    Object.defineProperty(HTMLElement.prototype, "requestFullscreen", {
-      configurable: true,
-      value: undefined,
-    });
-  });
-  await page.goto("/canais/" + navigationChannel.slug);
-  await page.getByRole("button", { name: "Tela cheia" }).click();
-  await expect(page.locator(".channel-player__fullscreen-error")).toHaveText(
-    "A tela cheia não está disponível neste navegador.",
-  );
-});
-
 test("cadastra, publica, edita, oculta, republica e exclui um canal", async ({
   page,
 }) => {
   await signIn(page, adminUser);
-  await page.route("https://rdcanais.org/**", (route) => route.abort());
-  await page.route("https://v1.rdembed.lat/**", (route) => route.abort());
+  await page.route("https://rdcanais.org/**", fulfillEmbedDocument);
+  await page.route("https://v1.rdembed.lat/**", fulfillEmbedDocument);
+  await page.route("https://player.canalmix.test/**", fulfillEmbedDocument);
   await expect(page.getByRole("heading", { name: "Canais" })).toBeVisible();
 
   const suffix = crypto.randomUUID().slice(0, 6);
@@ -972,28 +466,38 @@ test("cadastra, publica, edita, oculta, republica e exclui um canal", async ({
   await page.getByLabel("Link oficial (opcional)").fill(
     "https://canalmix.test/oficial",
   );
-  await page.getByRole("button", { name: "Testar player da opção 4" }).click();
+  await page.getByRole("button", { name: "Testar Opção 4" }).click();
   await expect(page.getByRole("dialog", { name: "Prévia" })).toBeVisible();
   await expect(
     page.getByTitle("Prévia do player do canal novo"),
   ).toHaveAttribute("src", optionFourUrl);
-  expect(
-    await page
-      .getByTitle("Prévia do player do canal novo")
-      .getAttribute("sandbox"),
-  ).toBeNull();
+  await expect(page.getByTitle("Prévia do player do canal novo")).not.toHaveAttribute("sandbox");
   await page.getByRole("button", { name: "Fechar prévia" }).click();
-  await page.locator('button[aria-label^="Testar player da opção "]').nth(1).click();
+  await page.getByRole("button", { name: "Embed por código" }).click();
+  const hostileEmbedCode = `<iframe src="${optionFourUrl}" sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols" allow="autoplay; popups; top-navigation" allowfullscreen></iframe>`;
+  await page.getByLabel("Código do embed — Opção 4").fill(hostileEmbedCode);
+  await page.getByRole("button", { name: "Testar Opção 4" }).click();
+  const codePreview = page.getByRole("dialog").locator("iframe");
+  await expect(codePreview).toHaveAttribute("src", optionFourUrl);
+  await expect(codePreview).not.toHaveAttribute("sandbox");
+  await expect(codePreview).toHaveAttribute(
+    "allow",
+    "autoplay; encrypted-media; picture-in-picture; fullscreen",
+  );
+  await expect(codePreview).toHaveAttribute("allowfullscreen", "");
+  await page.getByRole("button", { name: "Fechar prévia" }).click();
+  await page.getByRole("button", { name: "Embed por URL" }).click();
+  await page.locator('button[aria-label^="Testar Opção "]').nth(1).click();
   const rdEmbedPreview = page.getByRole("dialog").locator("iframe");
   await expect(rdEmbedPreview).toHaveAttribute(
     "referrerpolicy",
     "no-referrer",
   );
   await page.getByRole("button", { name: "Fechar prévia" }).click();
-  await page.locator('button[aria-label^="Testar player da opção "]').nth(2).click();
+  await page.locator('button[aria-label^="Testar Opção "]').nth(2).click();
   const providerPreview = page.getByRole("dialog").locator("iframe");
   await expect(providerPreview).toHaveAttribute("src", optionThreeUrl);
-  expect(await providerPreview.getAttribute("sandbox")).toBeNull();
+  await expect(providerPreview).not.toHaveAttribute("sandbox");
   await page.getByRole("button", { name: "Fechar prévia" }).click();
   await page.getByRole("button", { name: "Salvar canal" }).click();
   await expect(page.getByText(crudChannelName)).toBeVisible();
@@ -1034,14 +538,16 @@ test("cadastra, publica, edita, oculta, republica e exclui um canal", async ({
     "allowfullscreen",
     "",
   );
-  expect(
-    await page
-      .getByTitle("Player do canal " + crudChannelName)
-      .getAttribute("sandbox"),
-  ).toBeNull();
+  await expect(page.getByTitle("Player do canal " + crudChannelName)).not.toHaveAttribute("sandbox");
   await expect(page.getByTitle("Player do canal " + crudChannelName)).toHaveAttribute(
     "src",
     optionOneUrl,
+  );
+  const firstEmbedDocument = page.frameLocator("iframe.channel-player__frame");
+  await expect(firstEmbedDocument.getByRole("button", { name: "Play" })).toBeVisible();
+  await firstEmbedDocument.getByRole("button", { name: "Play" }).click();
+  await expect(firstEmbedDocument.locator("#playback-state")).toHaveText(
+    "Reproduzindo",
   );
   const secondPlayerOption = page.getByRole("button", { name: "Opção 2" });
   await page.getByRole("button", { name: "Opção 1" }).focus();
@@ -1050,6 +556,13 @@ test("cadastra, publica, edita, oculta, republica e exclui um canal", async ({
   await expect(page.getByTitle("Player do canal " + crudChannelName)).toHaveAttribute(
     "src",
     optionTwoUrl,
+  );
+  await expect(page.getByTitle("Player do canal " + crudChannelName)).not.toHaveAttribute("sandbox");
+  const secondEmbedDocument = page.frameLocator("iframe.channel-player__frame");
+  await expect(secondEmbedDocument.locator("#playback-state")).toHaveText("Parado");
+  await secondEmbedDocument.getByRole("button", { name: "Play" }).click();
+  await expect(secondEmbedDocument.locator("#playback-state")).toHaveText(
+    "Reproduzindo",
   );
   const multiOptionPlayer = page.getByTitle("Player do canal " + crudChannelName);
   const optionTwoButton = secondPlayerOption;
@@ -1066,26 +579,28 @@ test("cadastra, publica, edita, oculta, republica e exclui um canal", async ({
   ).toBe(true);
   await expect(multiOptionPlayer).toHaveAttribute("src", optionTwoUrl);
   await expect(optionTwoButton).toHaveAttribute("aria-pressed", "true");
+  await expect(multiOptionPlayer).not.toHaveAttribute("sandbox");
+  await expect(
+    page.frameLocator("iframe.channel-player__frame").locator("#playback-state"),
+  ).toHaveText("Parado");
   expect(page.url()).toBe(siteChannelUrlBeforeRefresh);
   expect(await page.evaluate(() => window.scrollY)).toBe(siteScrollBeforeRefresh);
   await expect(page.getByTitle("Player do canal " + crudChannelName)).toHaveAttribute(
     "referrerpolicy",
     "no-referrer",
   );
-  expect(
-    await page
-      .getByTitle("Player do canal " + crudChannelName)
-      .getAttribute("sandbox"),
-  ).toBeNull();
+  await expect(page.getByTitle("Player do canal " + crudChannelName)).not.toHaveAttribute("sandbox");
   await page.locator(".channel-player__options button").nth(2).click();
   const providerPlayer = page.getByTitle("Player do canal " + crudChannelName);
   await expect(providerPlayer).toHaveAttribute("src", optionThreeUrl);
-  expect(await providerPlayer.getAttribute("sandbox")).toBeNull();
+  await expect(providerPlayer).not.toHaveAttribute("sandbox");
   await page.getByRole("button", { name: "Opção 4" }).click();
-  await expect(page.getByTitle("Player do canal " + crudChannelName)).toHaveAttribute(
+  const fourthProviderPlayer = page.getByTitle("Player do canal " + crudChannelName);
+  await expect(fourthProviderPlayer).toHaveAttribute(
     "src",
     optionFourUrl,
   );
+  await expect(fourthProviderPlayer).not.toHaveAttribute("sandbox");
   await expect(page.getByRole("link", { name: "Abrir no site oficial" })).toHaveAttribute(
     "href",
     "https://canalmix.test/oficial",
@@ -1097,9 +612,9 @@ test("cadastra, publica, edita, oculta, republica e exclui um canal", async ({
   await expect(tvOptionOne).toBeFocused();
   await page.keyboard.press("ArrowRight");
   await expect(tvOptionTwo).toBeFocused();
-  const tvMultiOptionFrame = await page
-    .getByTitle("Player do canal " + crudChannelName)
-    .elementHandle();
+  const tvPlayer = page.getByTitle("Player do canal " + crudChannelName);
+  await expect(tvPlayer).not.toHaveAttribute("sandbox");
+  const tvMultiOptionFrame = await tvPlayer.elementHandle();
   const tvChannelUrlBeforeRefresh = page.url();
   const tvScrollBeforeRefresh = await page.evaluate(() => window.scrollY);
   const tvRefreshButton = page.getByRole("button", { name: "Atualizar player" });
@@ -1107,9 +622,8 @@ test("cadastra, publica, edita, oculta, republica e exclui um canal", async ({
   await expect(tvRefreshButton).toBeFocused();
   await page.keyboard.press("Enter");
   expect(await tvMultiOptionFrame?.evaluate((frame) => frame.isConnected)).toBe(false);
-  await expect(
-    page.getByTitle("Player do canal " + crudChannelName),
-  ).toHaveAttribute("src", optionTwoUrl);
+  await expect(tvPlayer).toHaveAttribute("src", optionTwoUrl);
+  await expect(tvPlayer).not.toHaveAttribute("sandbox");
   await expect(tvOptionTwo).toHaveAttribute("aria-pressed", "true");
   expect(page.url()).toBe(tvChannelUrlBeforeRefresh);
   expect(await page.evaluate(() => window.scrollY)).toBe(tvScrollBeforeRefresh);
@@ -1216,11 +730,7 @@ test("cadastra, publica, edita, oculta, republica e exclui um canal", async ({
     "https://v1.rdembed.lat/globomg",
   );
   expect(page.url()).toBe(singleOptionUrlBeforeRefresh);
-  expect(
-    await page
-      .getByTitle("Player do canal " + navigationChannel.name)
-      .getAttribute("sandbox"),
-  ).toBeNull();
+  await expect(page.getByTitle("Player do canal " + navigationChannel.name)).not.toHaveAttribute("sandbox");
   await expect(
     page.getByTitle("Player do canal " + navigationChannel.name),
   ).toHaveAttribute("referrerpolicy", "no-referrer");

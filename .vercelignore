@@ -1,0 +1,6 @@
+.env*
+/tmp
+/artifacts
+/test-results
+/playwright-report
+*.tsbuildinfo

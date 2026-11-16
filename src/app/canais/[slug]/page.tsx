@@ -3,17 +3,21 @@ import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { ChannelReturnLink } from "@/components/channel-return-link";
 import { ChannelPlayer } from "@/components/channel-player";
-import {
-  getProviderEmbedReferrerPolicy,
-  getProviderEmbedSandbox,
-} from "@/lib/embed-provider-policy.server";
+import { ChannelLocalActions } from "@/components/channel-local-actions";
+import { getProviderEmbedReferrerPolicy } from "@/lib/embed-provider-policy.server";
 import { getPublishedChannelBySlug } from "@/lib/channels";
 
 export const dynamic = "force-dynamic";
 
 type ChannelPageProps = {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ from?: string; voltar?: string }>;
+  searchParams: Promise<{
+    from?: string;
+    voltar?: string;
+    origem?: string;
+    categoria?: string;
+    busca?: string;
+  }>;
 };
 
 export default async function ChannelPage({
@@ -29,14 +33,15 @@ export default async function ChannelPage({
 
   const fromTv = query.from === "tv";
   const preferHistory = query.voltar === "historico";
-  const backHref = fromTv
-    ? "/tv?categoria=" +
-      encodeURIComponent(channel.categorySlug) +
-      "&foco=" +
-      encodeURIComponent(channel.slug)
-    : "/?categoria=" +
-      encodeURIComponent(channel.categorySlug) +
-      "&foco=" +
+  const fromPersonalList = query.origem === "favorites" || query.origem === "history";
+  const catalogPath = fromTv ? "/tv" : "/";
+  const backHref = fromPersonalList
+    ? catalogPath + "?foco=" + encodeURIComponent(channel.slug)
+    : catalogPath +
+      (query.busca
+        ? "?busca=" + encodeURIComponent(query.busca) + "&"
+        : "?categoria=" + encodeURIComponent(query.categoria ?? channel.categorySlug) + "&") +
+      "foco=" +
       encodeURIComponent(channel.slug);
 
   return (
@@ -58,17 +63,19 @@ export default async function ChannelPage({
         </header>
 
         <ChannelPlayer
+          channelId={channel.id}
           channelName={channel.name}
           embedUrls={channel.embedUrls}
-          sandboxValues={channel.embedUrls.map(getProviderEmbedSandbox)}
+          embedSourceIds={channel.embedSourceIds}
           referrerPolicies={channel.embedUrls.map(
             getProviderEmbedReferrerPolicy,
           )}
           tvMode={fromTv}
-          returnOnEscape={preferHistory}
+          returnOnEscape={fromTv || preferHistory}
         />
 
         <div className="channel-player__actions">
+          <ChannelLocalActions channelId={channel.id} />
           <ChannelReturnLink
             className="secondary-button"
             href={backHref}
