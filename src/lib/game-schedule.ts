@@ -1,4 +1,5 @@
 export const BRASILIA_TIME_ZONE = "America/Sao_Paulo";
+export const GAME_SCHEDULE_RETENTION_MS = 3 * 60 * 60 * 1000;
 
 export type GameCountry = {
   code: string;

@@ -1,7 +1,92 @@
--- Primeira carga local da grade CanalMix: 16 a 22/11/2026 (America/Sao_Paulo).
--- Reimportável: identidade externa faz upsert, início/fonte acompanham a fonte,
--- dados editados manualmente e transmissões existentes são preservados.
-with game_data (
+-- Grade CanalMix: 16 a 22/11/2026 (America/Sao_Paulo).
+-- Reimportável nos bancos local e público: cria seleções ausentes, associa os
+-- times por nome sem substituir vínculos manuais, e faz upsert das partidas.
+with team_data (
+  name, english_name, country_code, country_name, import_key, name_aliases
+) as (
+  values
+    ('Alemanha', 'Germany', 'DEU', 'Alemanha', 'canalmix:national:DEU:men', array['Germany']::text[]),
+    ('Países Baixos', 'Netherlands', 'NLD', 'Países Baixos', 'canalmix:national:NLD:men', array['Netherlands', 'Holland']::text[]),
+    ('Islândia', 'Iceland', 'ISL', 'Islândia', 'canalmix:national:ISL:men', array['Iceland']::text[]),
+    ('Luxemburgo', 'Luxembourg', 'LUX', 'Luxemburgo', 'canalmix:national:LUX:men', array['Luxembourg']::text[]),
+    ('Estônia', 'Estonia', 'EST', 'Estônia', 'canalmix:national:EST:men', array['Estonia']::text[]),
+    ('Bulgária', 'Bulgaria', 'BGR', 'Bulgária', 'canalmix:national:BGR:men', array['Bulgaria']::text[]),
+    ('Lituânia', 'Lithuania', 'LTU', 'Lituânia', 'canalmix:national:LTU:men', array['Lithuania']::text[]),
+    ('Liechtenstein', 'Liechtenstein', 'LIE', 'Liechtenstein', 'canalmix:national:LIE:men', array['Liechtenstein']::text[]),
+    ('Andorra', 'Andorra', 'AND', 'Andorra', 'canalmix:national:AND:men', array['Andorra']::text[]),
+    ('Azerbaijão', 'Azerbaijan', 'AZE', 'Azerbaijão', 'canalmix:national:AZE:men', array['Azerbaijan']::text[]),
+    ('Gibraltar', 'Gibraltar', 'GIB', 'Gibraltar', 'canalmix:national:GIB:men', array['Gibraltar']::text[]),
+    ('Malta', 'Malta', 'MLT', 'Malta', 'canalmix:national:MLT:men', array['Malta']::text[]),
+    ('Grécia', 'Greece', 'GRC', 'Grécia', 'canalmix:national:GRC:men', array['Greece']::text[]),
+    ('Sérvia', 'Serbia', 'SRB', 'Sérvia', 'canalmix:national:SRB:men', array['Serbia']::text[]),
+    ('Suíça', 'Switzerland', 'CHE', 'Suíça', 'canalmix:national:CHE:men', array['Switzerland']::text[]),
+    ('Escócia', 'Scotland', 'SCO', 'Escócia', 'canalmix:national:SCO:men', array['Scotland']::text[]),
+    ('Macedônia do Norte', 'North Macedonia', 'MKD', 'Macedônia do Norte', 'canalmix:national:MKD:men', array['North Macedonia']::text[]),
+    ('Eslovênia', 'Slovenia', 'SVN', 'Eslovênia', 'canalmix:national:SVN:men', array['Slovenia']::text[]),
+    ('Canadá', 'Canada', 'CAN', 'Canadá', 'canalmix:national:CAN:men', array['Canada']::text[]),
+    ('Guatemala', 'Guatemala', 'GTM', 'Guatemala', 'canalmix:national:GTM:men', array['Guatemala']::text[])
+),
+team_matches as materialized (
+  select distinct on (team_data.import_key)
+    team_data.import_key,
+    teams.id
+  from team_data
+  join public.teams as teams
+    on (
+      teams.import_key = team_data.import_key
+      and teams.team_type = 'national_team'
+      and teams.gender = 'men'
+    )
+    or (
+      teams.team_type = 'national_team'
+      and teams.gender = 'men'
+      and (
+        teams.name_key = pg_catalog.lower(pg_catalog.btrim(team_data.name))
+        or teams.name_key = pg_catalog.lower(pg_catalog.btrim(team_data.english_name))
+        or exists (
+          select 1
+          from pg_catalog.unnest(teams.name_aliases) as alias_name(value)
+          where pg_catalog.lower(pg_catalog.btrim(alias_name.value)) in (
+            pg_catalog.lower(pg_catalog.btrim(team_data.name)),
+            pg_catalog.lower(pg_catalog.btrim(team_data.english_name))
+          )
+        )
+      )
+    )
+  order by team_data.import_key, teams.id
+),
+inserted_teams as (
+  insert into public.teams (
+    name, official_name, country_code, country_name, team_type, gender,
+    squad_type, shield_url, shield_status, name_is_manual, import_key,
+    name_aliases, catalog_note
+  )
+  select
+    team_data.name, team_data.name, team_data.country_code, team_data.country_name,
+    'national_team', 'men', 'first', null, 'pending', true,
+    team_data.import_key, team_data.name_aliases,
+    'Seleção masculina; cadastrar escudo oficial ou licenciado quando disponível.'
+  from team_data
+  where not exists (
+    select 1
+    from team_matches
+    where team_matches.import_key = team_data.import_key
+  )
+  on conflict (import_key) do nothing
+  returning id, import_key
+),
+resolved_teams as (
+  select team_data.import_key, team_matches.id,
+    pg_catalog.lower(pg_catalog.btrim(team_data.name)) as name_key
+  from team_data
+  join team_matches on team_matches.import_key = team_data.import_key
+  union all
+  select team_data.import_key, inserted_teams.id,
+    pg_catalog.lower(pg_catalog.btrim(team_data.name)) as name_key
+  from team_data
+  join inserted_teams on inserted_teams.import_key = team_data.import_key
+),
+game_data (
   external_provider, external_id, home_team, away_team, home_team_id, away_team_id,
   competition_name, competition_country_code, competition_country_name, starts_at, source_urls
 ) as (
@@ -11,7 +96,90 @@ with game_data (
       'UEFA Nations League', 'OTHER', 'Europa', '2026-11-16T19:45:00Z'::timestamptz,
       array[
         'https://www.uefa.com/uefanationsleague/match/2047909--germany-vs-netherlands/',
-        'https://brazil.espnpressroom.com/press-releases/2026/11/espn-e-disney-tem-rodada-decisiva-da-serie-b-gigantes-europeus-na-uefa-nations-league-uefa-womens-champions-league-e-wta-finals-como-destaques-da-programacao/'
+        'https://brazil.espnpressroom.com/press-releases/2026/11/espn-e-disney-tem-rodada-decisiva-da-serie-b-gigantes-europeus-na-uefa-nations-league-uefa-womens-champions-league-e-wta-finals-como-destaques-da-programacao/',
+        'https://www.goal.com/br/listas/futebol-programacao-jogos-tv-aberta-fechada-onde-assistir-online-app/bltc0a7361374657315',
+        'https://veja.abril.com.br/esporte/jogos-de-hoje-segunda-feira-16-de-novembro-onde-assistir-futebol-ao-vivo-e-horarios/'
+      ]::text[]
+    ),
+    (
+      'uefa-nations-league-2026-27', '2047906', 'Islândia', 'Luxemburgo', null::uuid, null::uuid,
+      'UEFA Nations League', 'OTHER', 'Europa', '2026-11-16T17:00:00Z'::timestamptz,
+      array[
+        'https://www.uefa.com/uefanationsleague/match/2047906--iceland-vs-luxembourg-malta/',
+        'https://www.goal.com/br/listas/futebol-programacao-jogos-tv-aberta-fechada-onde-assistir-online-app/bltc0a7361374657315',
+        'https://veja.abril.com.br/esporte/jogos-de-hoje-segunda-feira-16-de-novembro-onde-assistir-futebol-ao-vivo-e-horarios/'
+      ]::text[]
+    ),
+    (
+      'uefa-nations-league-2026-27', '2047907', 'Estônia', 'Bulgária', null::uuid, null::uuid,
+      'UEFA Nations League', 'OTHER', 'Europa', '2026-11-16T17:00:00Z'::timestamptz,
+      array[
+        'https://www.uefa.com/uefanationsleague/match/2047907--estonia-vs-bulgaria/',
+        'https://www.goal.com/br/listas/futebol-programacao-jogos-tv-aberta-fechada-onde-assistir-online-app/bltc0a7361374657315',
+        'https://veja.abril.com.br/esporte/jogos-de-hoje-segunda-feira-16-de-novembro-onde-assistir-futebol-ao-vivo-e-horarios/'
+      ]::text[]
+    ),
+    (
+      'uefa-nations-league-2026-27', '2047911', 'Lituânia', 'Liechtenstein', null::uuid, null::uuid,
+      'UEFA Nations League', 'OTHER', 'Europa', '2026-11-16T17:00:00Z'::timestamptz,
+      array[
+        'https://www.uefa.com/uefanationsleague/match/2047911/',
+        'https://www.goal.com/br/listas/futebol-programacao-jogos-tv-aberta-fechada-onde-assistir-online-app/bltc0a7361374657315',
+        'https://veja.abril.com.br/esporte/jogos-de-hoje-segunda-feira-16-de-novembro-onde-assistir-futebol-ao-vivo-e-horarios/'
+      ]::text[]
+    ),
+    (
+      'affa-amistosos-2026', '2026-11-16-andorra-azerbaijao', 'Andorra', 'Azerbaijão', null::uuid, null::uuid,
+      'Amistoso internacional', 'OTHER', 'Internacional', '2026-11-16T18:00:00Z'::timestamptz,
+      array[
+        'https://www.affa.az/index.php/news/open-training-sessions-and-press-conference-schedule/81819',
+        'https://www.goal.com/br/listas/futebol-programacao-jogos-tv-aberta-fechada-onde-assistir-online-app/bltc0a7361374657315',
+        'https://veja.abril.com.br/esporte/jogos-de-hoje-segunda-feira-16-de-novembro-onde-assistir-futebol-ao-vivo-e-horarios/'
+      ]::text[]
+    ),
+    (
+      'uefa-nations-league-2026-27', '2047908', 'Gibraltar', 'Malta', null::uuid, null::uuid,
+      'UEFA Nations League', 'OTHER', 'Europa', '2026-11-16T19:45:00Z'::timestamptz,
+      array[
+        'https://www.uefa.com/uefanationsleague/match/2047908/',
+        'https://www.goal.com/br/listas/futebol-programacao-jogos-tv-aberta-fechada-onde-assistir-online-app/bltc0a7361374657315',
+        'https://veja.abril.com.br/esporte/jogos-de-hoje-segunda-feira-16-de-novembro-onde-assistir-futebol-ao-vivo-e-horarios/'
+      ]::text[]
+    ),
+    (
+      'uefa-nations-league-2026-27', '2047912', 'Grécia', 'Sérvia', null::uuid, null::uuid,
+      'UEFA Nations League', 'OTHER', 'Europa', '2026-11-16T19:45:00Z'::timestamptz,
+      array[
+        'https://www.uefa.com/uefanationsleague/match/2047912/',
+        'https://www.goal.com/br/listas/futebol-programacao-jogos-tv-aberta-fechada-onde-assistir-online-app/bltc0a7361374657315',
+        'https://veja.abril.com.br/esporte/jogos-de-hoje-segunda-feira-16-de-novembro-onde-assistir-futebol-ao-vivo-e-horarios/'
+      ]::text[]
+    ),
+    (
+      'uefa-nations-league-2026-27', '2047914', 'Suíça', 'Escócia', null::uuid, null::uuid,
+      'UEFA Nations League', 'OTHER', 'Europa', '2026-11-16T19:45:00Z'::timestamptz,
+      array[
+        'https://www.uefa.com/uefanationsleague/match/2047914--switzerland-vs-scotland/',
+        'https://www.goal.com/br/listas/futebol-programacao-jogos-tv-aberta-fechada-onde-assistir-online-app/bltc0a7361374657315',
+        'https://veja.abril.com.br/esporte/jogos-de-hoje-segunda-feira-16-de-novembro-onde-assistir-futebol-ao-vivo-e-horarios/'
+      ]::text[]
+    ),
+    (
+      'uefa-nations-league-2026-27', '2047915', 'Macedônia do Norte', 'Eslovênia', null::uuid, null::uuid,
+      'UEFA Nations League', 'OTHER', 'Europa', '2026-11-16T19:45:00Z'::timestamptz,
+      array[
+        'https://www.uefa.com/uefanationsleague/match/2047915/',
+        'https://www.goal.com/br/listas/futebol-programacao-jogos-tv-aberta-fechada-onde-assistir-online-app/bltc0a7361374657315',
+        'https://veja.abril.com.br/esporte/jogos-de-hoje-segunda-feira-16-de-novembro-onde-assistir-futebol-ao-vivo-e-horarios/'
+      ]::text[]
+    ),
+    (
+      'concacaf-nations-league-2026-27', '2026-11-16-canada-guatemala', 'Canadá', 'Guatemala', null::uuid, null::uuid,
+      'CONCACAF Nations League', 'OTHER', 'América do Norte', '2026-11-17T01:00:00Z'::timestamptz,
+      array[
+        'https://www.concacaf.com/competitions/nations-league/news/2026-27-concacaf-nations-league-november-schedule-confirmed',
+        'https://www.goal.com/br/listas/futebol-programacao-jogos-tv-aberta-fechada-onde-assistir-online-app/bltc0a7361374657315',
+        'https://veja.abril.com.br/esporte/jogos-de-hoje-segunda-feira-16-de-novembro-onde-assistir-futebol-ao-vivo-e-horarios/'
       ]::text[]
     ),
     (
@@ -122,8 +290,24 @@ with game_data (
       ]::text[]
     )
 ),
+resolved_game_data as (
+  select
+    game_data.external_provider, game_data.external_id, game_data.home_team,
+    game_data.away_team, game_data.competition_name,
+    game_data.competition_country_code, game_data.competition_country_name,
+    game_data.starts_at, game_data.source_urls,
+    coalesce(existing_home.id, resolved_home.id) as home_team_id,
+    coalesce(existing_away.id, resolved_away.id) as away_team_id
+  from game_data
+  left join public.teams as existing_home on existing_home.id = game_data.home_team_id
+  left join public.teams as existing_away on existing_away.id = game_data.away_team_id
+  left join resolved_teams as resolved_home
+    on resolved_home.name_key = pg_catalog.lower(pg_catalog.btrim(game_data.home_team))
+  left join resolved_teams as resolved_away
+    on resolved_away.name_key = pg_catalog.lower(pg_catalog.btrim(game_data.away_team))
+),
 upserted_games as (
-  insert into public.games (
+  insert into public.games as current_game (
     external_provider, external_id, home_team, away_team, home_team_id, away_team_id,
     competition_name, competition_country_code, competition_country_name,
     starts_at, source_urls, is_published, published_at
@@ -132,10 +316,12 @@ upserted_games as (
     external_provider, external_id, home_team, away_team, home_team_id, away_team_id,
     competition_name, competition_country_code, competition_country_name,
     starts_at, source_urls, true, now()
-  from game_data
+  from resolved_game_data
   on conflict (external_provider, external_id)
     where external_provider is not null and external_id is not null
   do update set
+    home_team_id = coalesce(current_game.home_team_id, excluded.home_team_id),
+    away_team_id = coalesce(current_game.away_team_id, excluded.away_team_id),
     starts_at = excluded.starts_at,
     source_urls = excluded.source_urls
   returning id, external_provider, external_id
@@ -145,6 +331,18 @@ broadcast_data (
 ) as (
   values
     ('uefa-nations-league-2026-27', '2047909', 'ESPN', '1b34b9e9-85d0-4902-853d-4056db9d27ab'::uuid, 0, true),
+    ('uefa-nations-league-2026-27', '2047909', 'Disney+', null::uuid, 1, false),
+    ('uefa-nations-league-2026-27', '2047906', 'ESPN 4', '70a16e94-2c93-4316-94dc-03a5ef5a7801'::uuid, 0, true),
+    ('uefa-nations-league-2026-27', '2047906', 'Disney+', null::uuid, 1, false),
+    ('uefa-nations-league-2026-27', '2047907', 'SporTV 2', '71c9af06-6d71-4d31-a873-9a5d5e99b074'::uuid, 0, true),
+    ('uefa-nations-league-2026-27', '2047911', 'Disney+', null::uuid, 0, false),
+    ('affa-amistosos-2026', '2026-11-16-andorra-azerbaijao', 'SporTV 3', '73f57b3d-5459-41c4-8381-7c033db23a8a'::uuid, 0, true),
+    ('uefa-nations-league-2026-27', '2047908', 'Disney+', null::uuid, 0, false),
+    ('uefa-nations-league-2026-27', '2047912', 'SporTV', '829e1b9b-aa53-49db-b46f-d83a8eee70f0'::uuid, 0, true),
+    ('uefa-nations-league-2026-27', '2047914', 'ESPN 4', '70a16e94-2c93-4316-94dc-03a5ef5a7801'::uuid, 0, true),
+    ('uefa-nations-league-2026-27', '2047914', 'Disney+', null::uuid, 1, false),
+    ('uefa-nations-league-2026-27', '2047915', 'Disney+', null::uuid, 0, false),
+    ('concacaf-nations-league-2026-27', '2026-11-16-canada-guatemala', 'Canal GOAT', (select channel.id from public.channels as channel where channel.slug = 'canal-goat' and channel.is_published and exists (select 1 from pg_catalog.unnest(channel.embed_source_active) as source(active) where source.active) limit 1), 0, true),
     ('cbf-amistosos-2026', 'singapura-brasil', 'TV Globo', null::uuid, 0, false),
     ('cbf-amistosos-2026', 'singapura-brasil', 'SporTV', '829e1b9b-aa53-49db-b46f-d83a8eee70f0'::uuid, 1, true),
     ('cbf-amistosos-2026', 'singapura-brasil', 'GE TV', '57e85b9c-6a6c-4d82-9595-8c3b3a81b74b'::uuid, 2, false),

@@ -4,6 +4,7 @@ import type {
   GameRow,
   TeamRow,
 } from "@/lib/supabase/database.types";
+import { GAME_SCHEDULE_RETENTION_MS } from "@/lib/game-schedule";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type GameBroadcastData = {
@@ -105,7 +106,10 @@ async function loadGames(
     if (mode === "public") {
       gameQuery = gameQuery
         .eq("is_published", true)
-        .gte("starts_at", new Date().toISOString());
+        .gte(
+          "starts_at",
+          new Date(Date.now() - GAME_SCHEDULE_RETENTION_MS).toISOString(),
+        );
     }
 
     const { data: gameData, error: gameError } = await gameQuery;

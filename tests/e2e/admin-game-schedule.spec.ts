@@ -295,7 +295,7 @@ test("administra a grade, publica o vÃ­nculo exato e restaura o foco no modo T
   const menuLabels = await menu.evaluateAll((links) =>
     links.map((link) => link.querySelector("span:not(.admin-sidebar__count)")?.textContent?.trim()),
   );
-  expect(menuLabels).toEqual(["Canais", "Categorias", "Grade de jogos", "Times e escudos", "Problemas Reportados"]);
+  expect(menuLabels).toEqual(["Canais", "Categorias", "Grade de jogos", "Times e escudos", "Doações Pix", "Problemas Reportados"]);
   await expect(menu.nth(0)).toHaveAttribute("aria-current", "page");
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator(".admin-sidebar__nav")).toBeHidden();
@@ -485,7 +485,7 @@ test("administra a grade, publica o vÃ­nculo exato e restaura o foco no modo T
   const selectedTvText = await focusedTvLink.innerText();
   const selectedTvHref = await focusedTvLink.getAttribute("href");
   expect(selectedTvHref).not.toBe(originalTvHref);
-  await expect(tvMainLink).toBeFocused();
+  await expect(focusedTvLink).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/canais\/.+\?from=tv/);
   await page.locator(".channel-page__back").click();

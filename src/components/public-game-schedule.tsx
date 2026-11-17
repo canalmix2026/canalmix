@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import type { ChannelCardData } from "@/lib/channels";
@@ -10,6 +10,7 @@ import {
   BRASILIA_TIME_ZONE,
   formatBrasiliaDateLong,
   formatBrasiliaTime,
+  GAME_SCHEDULE_RETENTION_MS,
 } from "@/lib/game-schedule";
 import { TeamCrest } from "@/components/team-crest";
 
@@ -93,18 +94,35 @@ export function PublicGameSchedule({
   showHeading = true,
   showAllLink = true,
 }: PublicGameScheduleProps) {
+  const [scheduleClock, setScheduleClock] = useState<number | null>(null);
   const sortedGames = [...games].sort(
     (left, right) => Date.parse(left.startsAt) - Date.parse(right.startsAt),
   );
+  const retainedGames = scheduleClock === null
+    ? sortedGames
+    : sortedGames.filter(
+      (game) => Date.parse(game.startsAt) + GAME_SCHEDULE_RETENTION_MS > scheduleClock,
+    );
   const visibleGames = typeof previewCount === "number"
-    ? sortedGames.slice(0, previewCount)
-    : sortedGames;
+    ? retainedGames.slice(0, previewCount)
+    : retainedGames;
   const dayGroups = groupByBrasiliaDate(visibleGames);
   const publishedChannels = new Map(
     channels
       .filter((channel) => channel.isPublished && channel.embedUrls.length > 0)
       .map((channel) => [channel.id, channel]),
   );
+
+  useEffect(() => {
+    const refreshScheduleClock = () => setScheduleClock(Date.now());
+    refreshScheduleClock();
+    const intervalId = window.setInterval(refreshScheduleClock, 30_000);
+    window.addEventListener("focus", refreshScheduleClock);
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refreshScheduleClock);
+    };
+  }, []);
 
   useEffect(() => {
     if (mode !== "tv") return;

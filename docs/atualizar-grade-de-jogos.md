@@ -15,6 +15,8 @@ Use esta rotina quando o usuário pedir **“Atualize a grade de jogos da semana
 ## 2. Cadastrar e vincular
 
 - Reutilize o cadastro de partidas, as ações administrativas e o catálogo de times e canais já existentes. Não crie um fluxo paralelo sem necessidade.
+- Antes de cadastrar a partida, procure cada participante em **Administração > Times** por nome, país, tipo e gênero. Se um clube ou uma seleção estiver ausente, cadastre-o nessa área antes de vincular a partida. Para seleções, use `national_team`, gênero correto, país e nome oficial/localizado; não use um clube de nome parecido como substituto.
+- Crie cada time ausente de forma idempotente e preserve os registros existentes. Vincule um escudo oficial ou licenciado somente quando a origem estiver confirmada; sem escudo aprovado, mantenha `shield_url` vazio e o estado pendente para usar o ícone padrão.
 - Antes de inserir, procure a partida pelo ID externo da competição, se existir. Sem ID, procure pela competição e pelo confronto mandante–visitante. Atualize a partida correspondente quando a data ou o horário mudar; evite duplicatas.
 - No cadastro administrativo, preencha juntos o provedor e o ID externo da partida quando a fonte fornecer um identificador; salve cada URL HTTPS de confirmação em uma linha do campo de fontes para revisão no painel.
 - Preserve IDs existentes, correções manuais e escudos já associados. Não substitua um valor corrigido manualmente por um valor de uma fonte secundária. Quando a fonte oficial contrariar uma correção, registre a divergência para revisão.
@@ -30,10 +32,17 @@ Use esta rotina quando o usuário pedir **“Atualize a grade de jogos da semana
 - Repita a conferência no Modo TV. O mesmo critério de botão e texto deve valer nos dois modos.
 - Se qualquer requisito visual falhar, corrija a implementação antes de concluir a rotina e confira novamente a grade pública e o Modo TV.
 
-## 4. Executar e validar no ambiente local
+## 4. Retenção das partidas
+
+- Mantenha cada partida publicada na grade até completar três horas do seu horário de início, inclusive enquanto estiver em andamento.
+- Após três horas, exclua a partida do catálogo nos Supabase local e público. A exclusão deve remover as transmissões vinculadas por cascata e não criar nem manter histórico.
+- A limpeza automática roda a cada minuto; a grade também oculta partidas vencidas quando o limite de três horas é atingido.
+
+## 5. Executar e validar no ambiente local
 
 - Para gravar, confirme primeiro o Supabase local com `npm exec -- supabase status --network-id canal-mix-local --output json`. Verifique que `linked_project` é `null` e que `API_URL` ou o host do banco usa loopback (`127.0.0.1`, `localhost` ou `::1`). Pare se qualquer condição falhar.
 - Consulte o estado atual da grade e do catálogo para evitar duplicatas e para reutilizar os IDs dos times e canais. Use o fluxo de cadastro/importação atual do projeto.
-- Grave somente no ambiente local. Não use `--remote`, não vincule projeto Supabase, não faça deploy ou push e não escreva em produção. Não use `supabase db reset` para importar jogos.
-- Confira os dados salvos e a grade renderizada. Repita a importação dos mesmos dados e confirme que o total de partidas não aumentou por duplicação.
-- No resumo, informe o período consultado, quantas partidas foram adicionadas e atualizadas, e liste as que ficaram sem vínculo de canal, sem escudo ou com `Premiere — canal a confirmar`. Inclua as fontes usadas para permitir conferência posterior.
+- Atualize sempre o Supabase local e o site público. No público, confirme o projeto `canalmix2026` (`cyymtfofyhgcsoxefetn`) pela conta conectada antes de gravar; não use um destino remoto implícito do CLI. Faça upsert idempotente e acrescente somente partidas, times e transmissões que faltam.
+- Não use `supabase db reset` para importar jogos. Se a mudança for somente de dados, publique os dados no Supabase; só faça deploy de código quando a implementação do site também tiver mudado.
+- Confira os dados salvos e a grade renderizada local e pública, incluindo o Modo TV. Repita a importação dos mesmos dados nos dois ambientes e confirme que não houve duplicações.
+- No resumo, informe o período consultado, quantas partidas foram adicionadas e atualizadas em cada ambiente, e liste times sem escudo, jogos sem vínculo de canal ou com `Premiere — canal a confirmar`. Inclua as fontes usadas para permitir conferência posterior.
