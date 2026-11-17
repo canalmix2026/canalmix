@@ -3,13 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AlertCircle, CalendarDays, ChevronDown, Clapperboard, Shield, Tv } from "lucide-react";
+import { AlertCircle, CalendarDays, ChevronDown, Clapperboard, HeartHandshake, Shield, Tv } from "lucide-react";
 
 const ADMIN_SECTIONS = [
   { href: "/admin/canais", label: "Canais", icon: Tv },
   { href: "/admin/categorias", label: "Categorias", icon: Clapperboard },
   { href: "/admin/grade", label: "Grade de jogos", icon: CalendarDays },
   { href: "/admin/times", label: "Times e escudos", icon: Shield },
+  { href: "/admin/doacoes", label: "Doações Pix", icon: HeartHandshake },
   { href: "/admin/problemas", label: "Problemas Reportados", icon: AlertCircle },
 ];
 

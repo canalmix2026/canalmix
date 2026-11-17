@@ -92,6 +92,17 @@ export type ChannelRow = {
   updated_at: string;
 };
 
+export type PixDonationSettingsRow = {
+  id: boolean;
+  pix_key: string;
+  receiver_name: string;
+  is_active: boolean;
+  preset_amount_1_cents: number;
+  preset_amount_2_cents: number;
+  preset_amount_3_cents: number;
+  updated_at: string;
+};
+
 type Table<Row, Insert, Update> = {
   Row: Row;
   Insert: Insert;
@@ -111,6 +122,29 @@ export type Database = {
         { user_id: string; created_at: string },
         { user_id: string; created_at?: string },
         { user_id?: string; created_at?: string }
+      >;
+      pix_donation_settings: Table<
+        PixDonationSettingsRow,
+        {
+          id?: boolean;
+          pix_key?: string;
+          receiver_name?: string;
+          is_active?: boolean;
+          preset_amount_1_cents?: number;
+          preset_amount_2_cents?: number;
+          preset_amount_3_cents?: number;
+          updated_at?: string;
+        },
+        {
+          id?: boolean;
+          pix_key?: string;
+          receiver_name?: string;
+          is_active?: boolean;
+          preset_amount_1_cents?: number;
+          preset_amount_2_cents?: number;
+          preset_amount_3_cents?: number;
+          updated_at?: string;
+        }
       >;
       teams: Table<
         TeamRow,
