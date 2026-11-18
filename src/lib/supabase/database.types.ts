@@ -33,6 +33,7 @@ export type GameBroadcastRow = {
   country_name: string;
   broadcaster_name: string;
   channel_id: string | null;
+  youtube_video_url: string | null;
   sort_order: number;
   is_primary: boolean;
   created_at: string;
@@ -349,6 +350,7 @@ export type Database = {
           country_name: string;
           broadcaster_name: string;
           channel_id?: string | null;
+          youtube_video_url?: string | null;
           sort_order?: number;
           is_primary?: boolean;
           created_at?: string;
@@ -360,6 +362,7 @@ export type Database = {
           country_name?: string;
           broadcaster_name?: string;
           channel_id?: string | null;
+          youtube_video_url?: string | null;
           sort_order?: number;
           is_primary?: boolean;
         }
@@ -413,6 +416,28 @@ export type Database = {
         Returns: string;
       };
       save_game_with_metadata: {
+        Args: {
+          p_game_id: string | null;
+          p_home_team: string;
+          p_away_team: string;
+          p_competition_name: string;
+          p_competition_country_code: string;
+          p_competition_country_name: string;
+          p_starts_at: string;
+          p_broadcasts: Json;
+          p_home_team_id: string | null;
+          p_away_team_id: string | null;
+          p_home_team_provider: string | null;
+          p_home_team_external_id: string | null;
+          p_away_team_provider: string | null;
+          p_away_team_external_id: string | null;
+          p_external_provider: string | null;
+          p_external_id: string | null;
+          p_source_urls: string[];
+        };
+        Returns: string;
+      };
+      save_game_with_youtube_metadata: {
         Args: {
           p_game_id: string | null;
           p_home_team: string;

@@ -13,6 +13,7 @@ import { getProviderEmbedReferrerPolicy } from "@/lib/embed-provider-policy.serv
 import type { EmbedReferrerPolicy } from "@/lib/embed-provider-policy-core";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { normalizeYouTubeVideoUrl } from "@/lib/youtube-video";
 
 export type AdminActionResult = {
   success: boolean;
@@ -32,6 +33,15 @@ const gameBroadcastInputSchema = z.object({
   countryName: z.string().trim().min(2).max(60),
   broadcasterName: z.string().trim().min(2).max(100),
   channelId: z.string().uuid().nullable(),
+  youtubeVideoUrl: z.string().trim().max(2048).default("").transform((value, context) => {
+    if (!value) return null;
+    const normalized = normalizeYouTubeVideoUrl(value);
+    if (!normalized) {
+      context.addIssue({ code: "custom", message: "Cole um link válido de vídeo ou transmissão do YouTube." });
+      return z.NEVER;
+    }
+    return normalized;
+  }),
   isPrimary: z.boolean().default(false),
   sortOrder: z.number().int().min(0).max(29),
 });
@@ -506,6 +516,7 @@ export async function saveGameAction(
       countryName: broadcast.countryName,
       broadcasterName: broadcast.broadcasterName,
       channelId: broadcast.channelId,
+      youtubeVideoUrl: broadcast.youtubeVideoUrl,
       isPrimary: broadcast.isPrimary,
       sortOrder: broadcast.sortOrder,
     })),
@@ -517,7 +528,7 @@ export async function saveGameAction(
     p_external_id: game.externalId?.trim() || null,
     p_source_urls: game.sourceUrls,
   };
-  const { error } = await admin.supabase.rpc("save_game_with_metadata", {
+  const { error } = await admin.supabase.rpc("save_game_with_youtube_metadata", {
     ...rpcValues,
     p_home_team_id: game.homeTeamId ?? null,
     p_away_team_id: game.awayTeamId ?? null,

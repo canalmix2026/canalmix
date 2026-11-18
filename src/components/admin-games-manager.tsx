@@ -10,9 +10,10 @@ import {
 import type { ChannelCardData } from "@/lib/channels";
 import type { GameBroadcastData, GameScheduleData } from "@/lib/games";
 import type { TeamScheduleData } from "@/lib/teams";
+import type { GameCountry } from "@/lib/game-countries";
+import { normalizeYouTubeVideoUrl } from "@/lib/youtube-video";
 import {
   BRASILIA_TIME_ZONE,
-  GAME_COUNTRIES,
   brasiliaDateTimeToUtc,
   formatBrasiliaDateTime,
   utcToBrasiliaInputs,
@@ -25,6 +26,7 @@ type BroadcastDraft = {
   countryName: string;
   broadcasterName: string;
   channelId: string | null;
+  youtubeVideoUrl: string;
   isPrimary: boolean;
 };
 
@@ -36,6 +38,7 @@ function draftBroadcast(broadcast: GameBroadcastData, index: number): BroadcastD
     countryName: broadcast.countryName,
     broadcasterName: broadcast.broadcasterName,
     channelId: broadcast.channelId,
+    youtubeVideoUrl: broadcast.youtubeVideoUrl ?? "",
     isPrimary: broadcast.isPrimary,
   };
 }
@@ -48,8 +51,88 @@ function newBroadcast(index: number): BroadcastDraft {
     countryName: "Brasil",
     broadcasterName: "",
     channelId: null,
+    youtubeVideoUrl: "",
     isPrimary: false,
   };
+}
+
+function normalizeCountrySearch(value: string) {
+  return value
+    .trim()
+    .toLocaleLowerCase("pt-BR")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function SearchableCountrySelect({
+  countries,
+  code,
+  name,
+  label,
+  onChange,
+}: {
+  countries: GameCountry[];
+  code: string;
+  name: string;
+  label: string;
+  onChange(code: string, name: string): void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const selected = countries.find((country) => country.code === code);
+  const selectedName = selected?.name ?? (name ? `${name} (${code})` : `País (${code})`);
+  const normalizedQuery = normalizeCountrySearch(query);
+  const results = countries.filter((country) =>
+    !normalizedQuery || normalizeCountrySearch(`${country.name} ${country.code}`).includes(normalizedQuery),
+  );
+
+  return (
+    <div className="game-country-select">
+      <button
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-label={label}
+        className="game-country-select__trigger"
+        onClick={() => setOpen((current) => !current)}
+        type="button"
+      >
+        <span>{selectedName}</span>
+        <ChevronDown aria-hidden="true" size={17} />
+      </button>
+      {open && (
+        <div className="game-country-select__menu">
+          <div className="game-country-select__search">
+            <Search aria-hidden="true" size={16} />
+            <input
+              aria-label={label}
+              autoFocus
+              onChange={(event) => setQuery(event.currentTarget.value)}
+              onKeyDown={(event) => { if (event.key === "Escape") setOpen(false); }}
+              placeholder="Buscar país por nome"
+              type="search"
+              value={query}
+            />
+          </div>
+          <div aria-label={label} className="game-country-select__options" role="listbox">
+            {results.map((country) => (
+              <button
+                aria-selected={country.code === code}
+                key={country.code}
+                onClick={() => { onChange(country.code, country.name); setOpen(false); setQuery(""); }}
+                role="option"
+                type="button"
+              >
+                <span>{country.name}</span>
+                <small>{country.code}</small>
+              </button>
+            ))}
+            {results.length === 0 && <p>Nenhum país encontrado.</p>}
+          </div>
+          <small className="game-country-select__count">{results.length} países</small>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function SearchableChannelSelect({
@@ -227,12 +310,14 @@ function SearchableTeamSelect({
 function GameForm({
   game,
   channels,
+  countries,
   teams,
   onClose,
   onSaved,
 }: {
   game: GameScheduleData | null;
   channels: ChannelCardData[];
+  countries: GameCountry[];
   teams: TeamScheduleData[];
   onClose(): void;
   onSaved(): void;
@@ -266,7 +351,7 @@ function GameForm({
   }
 
   function setBroadcastCountry(row: BroadcastDraft, code: string) {
-    const country = GAME_COUNTRIES.find((item) => item.code === code);
+    const country = countries.find((item) => item.code === code);
     updateBroadcast(row.key, {
       countryCode: code,
       countryName: code === "OTHER" ? "" : country?.name ?? row.countryName,
@@ -284,10 +369,9 @@ function GameForm({
     ));
   }
 
-  function setCompetitionCountry(code: string) {
-    const country = GAME_COUNTRIES.find((item) => item.code === code);
+  function setCompetitionCountry(code: string, name: string) {
     setCompetitionCountryCode(code);
-    setCompetitionCountryName(code === "OTHER" ? "" : country?.name ?? "");
+    setCompetitionCountryName(code === "OTHER" ? "" : name);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -319,6 +403,12 @@ function GameForm({
       setMessageIsError(true);
       return;
     }
+    if (broadcasts.some((row) => row.youtubeVideoUrl.trim() && !normalizeYouTubeVideoUrl(row.youtubeVideoUrl))) {
+      setPending(false);
+      setMessage("Cole um link válido de vídeo ou transmissão do YouTube.");
+      setMessageIsError(true);
+      return;
+    }
 
     const result = await saveGameAction({
       id: game?.id ?? null,
@@ -339,6 +429,7 @@ function GameForm({
         countryName: row.countryName,
         broadcasterName: row.broadcasterName,
         channelId: row.channelId,
+        youtubeVideoUrl: normalizeYouTubeVideoUrl(row.youtubeVideoUrl) ?? "",
         isPrimary: row.isPrimary,
         sortOrder: index,
       })),
@@ -379,12 +470,16 @@ function GameForm({
               Competição
               <input maxLength={120} onChange={(event) => setCompetitionName(event.currentTarget.value)} required value={competitionName} />
             </label>
-            <label>
+            <div className="game-form__country-control">
               País da competição
-              <select onChange={(event) => setCompetitionCountry(event.currentTarget.value)} value={competitionCountryCode}>
-                {GAME_COUNTRIES.map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}
-              </select>
-            </label>
+              <SearchableCountrySelect
+                code={competitionCountryCode}
+                countries={countries}
+                label="Buscar país da competição"
+                name={competitionCountryName}
+                onChange={setCompetitionCountry}
+              />
+            </div>
             {competitionCountryCode === "OTHER" && (
               <label>
                 Nome do país
@@ -440,10 +535,11 @@ function GameForm({
 
         <fieldset className="game-form__section">
           <legend>Transmissões</legend>
+          <p className="game-form__section-note">Digite qualquer emissora manualmente. O vínculo com o catálogo é opcional; um link do YouTube cria um player só para esta partida, sem cadastrar um canal.</p>
           <div aria-hidden="true" className="game-form__broadcast-headings">
             <span>País</span>
             <span>Emissora anunciada</span>
-            <span>Canal no CanalMix</span>
+            <span>Canal do catálogo (opcional)</span>
             <span>Principal</span>
             <span className="sr-only">Ações</span>
           </div>
@@ -451,12 +547,13 @@ function GameForm({
             {broadcasts.map((row, index) => (
               <div className="game-form__broadcast-row" key={row.key}>
                 <div className="game-form__country-field">
-                  <label>
-                    <span className="sr-only">País da emissora {index + 1}</span>
-                    <select onChange={(event) => setBroadcastCountry(row, event.currentTarget.value)} value={row.countryCode}>
-                      {GAME_COUNTRIES.map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}
-                    </select>
-                  </label>
+                  <SearchableCountrySelect
+                    code={row.countryCode}
+                    countries={countries}
+                    label={`Buscar país da emissora ${index + 1}`}
+                    name={row.countryName}
+                    onChange={(code) => setBroadcastCountry(row, code)}
+                  />
                   {row.countryCode === "OTHER" && (
                     <input
                       aria-label={`Nome do país da emissora ${index + 1}`}
@@ -469,22 +566,34 @@ function GameForm({
                   )}
                 </div>
                 <label className="game-form__broadcaster-field">
-                  <span className="sr-only">Emissora anunciada {index + 1}</span>
+                  <span className="sr-only">Nome do canal ou emissora {index + 1}</span>
                   <input
                     maxLength={100}
                     onChange={(event) => updateBroadcast(row.key, { broadcasterName: event.currentTarget.value })}
-                    placeholder="Ex.: SporTV 3, ge tv ou TF1"
+                    placeholder="Digite qualquer canal ou emissora"
                     required
                     value={row.broadcasterName}
                   />
                 </label>
                 <label className="game-form__channel-field">
-                  <span className="sr-only">Canal no CanalMix {index + 1}</span>
+                  <span className="sr-only">Vínculo com canal do catálogo {index + 1}</span>
                   <SearchableChannelSelect
                     channels={channels}
                     onChange={(channelId) => updateBroadcast(row.key, { channelId })}
                     value={row.channelId}
                   />
+                </label>
+                <label className="game-form__youtube-field">
+                  Link do YouTube para este jogo (opcional)
+                  <input
+                    autoComplete="url"
+                    inputMode="url"
+                    maxLength={2048}
+                    onChange={(event) => updateBroadcast(row.key, { youtubeVideoUrl: event.currentTarget.value })}
+                    placeholder="https://youtube.com/watch?v=... ou https://youtu.be/..."
+                    value={row.youtubeVideoUrl}
+                  />
+                  <small>O player aparece na grade pública e no Modo TV. O vídeo fica vinculado apenas a esta transmissão.</small>
                 </label>
                 <label className="game-form__primary-field">
                   <input
@@ -535,10 +644,12 @@ function GameForm({
 export function AdminGamesManager({
   games,
   channels,
+  countries,
   teams,
 }: {
   games: GameScheduleData[];
   channels: ChannelCardData[];
+  countries: GameCountry[];
   teams: TeamScheduleData[];
 }) {
   const router = useRouter();
@@ -674,6 +785,7 @@ export function AdminGamesManager({
             </header>
             <GameForm
               channels={channels}
+              countries={countries}
               game={editing}
               teams={teams}
               key={editing?.id ?? "new"}

@@ -1,25 +1,6 @@
 export const BRASILIA_TIME_ZONE = "America/Sao_Paulo";
 export const GAME_SCHEDULE_RETENTION_MS = 3 * 60 * 60 * 1000;
 
-export type GameCountry = {
-  code: string;
-  name: string;
-};
-
-export const GAME_COUNTRIES: GameCountry[] = [
-  { code: "BR", name: "Brasil" },
-  { code: "AR", name: "Argentina" },
-  { code: "DE", name: "Alemanha" },
-  { code: "ES", name: "Espanha" },
-  { code: "FR", name: "França" },
-  { code: "GB", name: "Inglaterra" },
-  { code: "IT", name: "Itália" },
-  { code: "LOCAL", name: "Mercado local" },
-  { code: "PT", name: "Portugal" },
-  { code: "US", name: "Estados Unidos" },
-  { code: "OTHER", name: "Outro país" },
-];
-
 type DateTimeParts = {
   year: number;
   month: number;

@@ -13,6 +13,7 @@ export type GameBroadcastData = {
   countryName: string;
   broadcasterName: string;
   channelId: string | null;
+  youtubeVideoUrl: string | null;
   sortOrder: number;
   isPrimary: boolean;
 };
@@ -57,6 +58,7 @@ function mapGameRows(
       countryName: broadcast.country_name,
       broadcasterName: broadcast.broadcaster_name,
       channelId: broadcast.channel_id,
+      youtubeVideoUrl: broadcast.youtube_video_url,
       sortOrder: broadcast.sort_order,
       isPrimary: broadcast.is_primary,
     });

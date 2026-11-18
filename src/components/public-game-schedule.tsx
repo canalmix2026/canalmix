@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import type { ChannelCardData } from "@/lib/channels";
-import type { GameScheduleData } from "@/lib/games";
+import type { GameBroadcastData, GameScheduleData } from "@/lib/games";
+import { normalizeYouTubeVideoUrl } from "@/lib/youtube-video";
 import {
   brasiliaDateKey,
   BRASILIA_TIME_ZONE,
@@ -13,6 +14,7 @@ import {
   GAME_SCHEDULE_RETENTION_MS,
 } from "@/lib/game-schedule";
 import { TeamCrest } from "@/components/team-crest";
+import { EmbedFrame } from "@/components/embed-frame";
 
 type PublicGameScheduleProps = {
   games: GameScheduleData[];
@@ -24,6 +26,10 @@ type PublicGameScheduleProps = {
 };
 
 const TV_SCHEDULE_RETURN_KEY = "canalmix.catalog-return.tv.schedule";
+
+type TransmissionOption =
+  | { kind: "youtube"; broadcast: GameBroadcastData; embedUrl: string }
+  | { kind: "channel"; broadcast: GameBroadcastData; channel: ChannelCardData };
 
 function focusKey(gameId: string, broadcastId?: string) {
   return broadcastId ? `game-${gameId}-broadcast-${broadcastId}` : `game-${gameId}`;
@@ -64,14 +70,17 @@ function getBrazilianTransmission(
   const broadcasts = game.broadcasts
     .filter((broadcast) => broadcast.countryCode.toUpperCase() === "BR")
     .sort((left, right) => left.sortOrder - right.sortOrder);
-  const available = broadcasts.flatMap((broadcast) => {
+  const available: TransmissionOption[] = broadcasts.flatMap<TransmissionOption>((broadcast): TransmissionOption[] => {
+    const embedUrl = normalizeYouTubeVideoUrl(broadcast.youtubeVideoUrl ?? "");
+    if (embedUrl) return [{ kind: "youtube" as const, broadcast, embedUrl }];
+
     const channel = broadcast.channelId
       ? publishedChannels.get(broadcast.channelId)
       : undefined;
-    return channel ? [{ broadcast, channel }] : [];
+    return channel ? [{ kind: "channel" as const, broadcast, channel }] : [];
   });
   const selected = available.find(({ broadcast }) => broadcast.isPrimary) ?? available[0];
-  if (selected) return { kind: "channel" as const, ...selected };
+  if (selected) return selected;
 
   const names = [...new Map(
     broadcasts.map((broadcast) => {
@@ -95,6 +104,7 @@ export function PublicGameSchedule({
   showAllLink = true,
 }: PublicGameScheduleProps) {
   const [scheduleClock, setScheduleClock] = useState<number | null>(null);
+  const [activeYoutubeBroadcastId, setActiveYoutubeBroadcastId] = useState<string | null>(null);
   const sortedGames = [...games].sort(
     (left, right) => Date.parse(left.startsAt) - Date.parse(right.startsAt),
   );
@@ -181,8 +191,12 @@ export function PublicGameSchedule({
                   const transmission = getBrazilianTransmission(game, publishedChannels);
                   const watchSlug = focusKey(
                     game.id,
-                    transmission.kind === "channel" ? transmission.broadcast.id : undefined,
+                    transmission.kind === "channel" || transmission.kind === "youtube"
+                      ? transmission.broadcast.id
+                      : undefined,
                   );
+                  const youtubePlayerOpen = transmission.kind === "youtube"
+                    && activeYoutubeBroadcastId === transmission.broadcast.id;
                   const href = transmission.kind === "channel"
                     ? `/canais/${encodeURIComponent(transmission.channel.slug)}?${mode === "tv" ? "from=tv&" : ""}voltar=historico&origem=schedule`
                     : null;
@@ -217,12 +231,43 @@ export function PublicGameSchedule({
                           >
                             Assistir no {transmission.channel.name}
                           </Link>
+                        ) : transmission.kind === "youtube" ? (
+                          <button
+                            aria-controls={`youtube-game-${game.id}`}
+                            aria-expanded={youtubePlayerOpen}
+                            className="public-game-row__watch"
+                            data-catalog-card={mode === "tv" ? "" : undefined}
+                            data-list-section={mode === "tv" ? "schedule" : undefined}
+                            data-schedule-focus={watchSlug}
+                            data-slug={mode === "tv" ? watchSlug : undefined}
+                            data-tv-schedule-item={mode === "tv" ? "" : undefined}
+                            onClick={() => setActiveYoutubeBroadcastId(youtubePlayerOpen ? null : transmission.broadcast.id)}
+                            type="button"
+                          >
+                            {youtubePlayerOpen ? "Fechar player" : `Assistir no ${transmission.broadcast.broadcasterName}`}
+                          </button>
                         ) : transmission.kind === "names" ? (
                           <span className="public-game-row__broadcasters">{transmission.names.join(" · ")}</span>
                         ) : (
                           <span className="public-game-row__unconfirmed">Transmissão a confirmar</span>
                         )}
                       </div>
+                      {transmission.kind === "youtube" && youtubePlayerOpen && (
+                        <div
+                          aria-label={`Player do jogo ${game.homeTeam} x ${game.awayTeam}`}
+                          className="public-game-row__youtube-player"
+                          id={`youtube-game-${game.id}`}
+                          role="region"
+                        >
+                          <EmbedFrame
+                            className="public-game-row__youtube-frame"
+                            loading="lazy"
+                            referrerPolicy="strict-origin-when-cross-origin"
+                            src={transmission.embedUrl}
+                            title={`${transmission.broadcast.broadcasterName}: ${game.homeTeam} x ${game.awayTeam}`}
+                          />
+                        </div>
+                      )}
                     </article>
                   );
                 })}

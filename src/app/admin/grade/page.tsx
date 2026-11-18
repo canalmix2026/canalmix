@@ -3,6 +3,7 @@ import { AdminShell } from "@/components/admin-shell";
 import { requireAdminPage } from "@/lib/admin-auth";
 import { getAdminCatalog, getAdminReportedIssues } from "@/lib/channels";
 import { getAdminGameSchedule } from "@/lib/games";
+import { getGameCountries } from "@/lib/game-countries";
 import { getAdminTeams } from "@/lib/teams";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,7 @@ export default async function AdminGamesPage() {
   return (
     <AdminShell pendingIssues={pendingIssues}>
       {catalog.status === "ready" && games.status === "ready" && teams.status === "ready" ? (
-        <AdminGamesManager channels={catalog.channels} games={games.games} teams={teams.teams} />
+        <AdminGamesManager channels={catalog.channels} countries={getGameCountries()} games={games.games} teams={teams.teams} />
       ) : (
         <section className="admin-list-panel" role="status">
           <p>Não foi possível carregar a grade local. Verifique as migrations do Supabase.</p>
