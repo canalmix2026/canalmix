@@ -197,7 +197,13 @@ export function TvIptvInterface({
       lastFocusedItemKeyRef.current = itemKey;
       setFocusedItemKey(itemKey);
     }
-    item.focus({ preventScroll: true });
+    try {
+      item.focus({ preventScroll: true });
+    } catch {
+      item.focus();
+    }
+
+    if (document.activeElement !== item) item.focus();
 
     const list = listRef.current;
     if (!list?.contains(item)) return;
@@ -295,7 +301,7 @@ export function TvIptvInterface({
         if (item && sidebar.contains(item)) return item;
       }
 
-      const preferredKey = focusedItemKey ?? lastFocusedItemKeyRef.current;
+      const preferredKey = lastFocusedItemKeyRef.current ?? focusedItemKey;
       return (
         items.find((item) => item.dataset.tvIptvKey === preferredKey) ??
         items[0] ??
@@ -431,7 +437,10 @@ export function TvIptvInterface({
       ).filter((item) => !item.hasAttribute("disabled"));
       if (items.length === 0) return;
 
-      const currentItem = getSidebarItem(event.target);
+      const rememberedItem = items.find(
+        (item) => item.dataset.tvIptvKey === lastFocusedItemKeyRef.current,
+      );
+      const currentItem = rememberedItem ?? getSidebarItem(event.target);
       const currentIndex = currentItem ? items.indexOf(currentItem) : -1;
       const direction = key === "ArrowDown" ? 1 : -1;
       const nextIndex =
