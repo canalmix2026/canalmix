@@ -4690,3 +4690,17 @@ select:focus-visible {
     display: none;
   }
 }
+
+@media (max-width: 760px) {
+  .public-site-layout .pix-donation-launcher {
+    top: 50vh;
+    top: 50dvh;
+    right: 0;
+    bottom: auto;
+    transform: translateY(-50%);
+  }
+
+  .public-site-layout .pix-donation-launcher:hover {
+    transform: translateY(calc(-50% - 1px));
+  }
+}
