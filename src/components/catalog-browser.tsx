@@ -565,6 +565,7 @@ export function CatalogBrowser({
       <footer className="catalog-footer">
         <span>CanalMix</span>
         <span>Canais da internet em um só lugar.</span>
+        <Link className="catalog-footer__about" href="/sobre-nos">Sobre nós</Link>
         <Link href="/admin/login">Área administrativa</Link>
       </footer>
     </main>
