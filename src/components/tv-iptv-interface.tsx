@@ -277,12 +277,22 @@ export function TvIptvInterface({
       return target instanceof Element && Boolean(target.closest(TV_PLAYER_SELECTOR));
     }
 
-    function shouldHandleRemoteInput(event: globalThis.KeyboardEvent) {
+    function shouldHandleRemoteInput(
+      event: globalThis.KeyboardEvent,
+      key: string,
+    ) {
       const target = event.target instanceof Element ? event.target : null;
       const activeElement =
         document.activeElement instanceof Element ? document.activeElement : null;
 
       if (isInsidePlayer(target) || isInsidePlayer(activeElement)) return false;
+
+      if (
+        view.kind === "categories" &&
+        (key === "ArrowUp" || key === "ArrowDown" || key === "ArrowRight")
+      ) {
+        return true;
+      }
 
       const sidebar = sidebarRef.current;
       if (
@@ -309,7 +319,7 @@ export function TvIptvInterface({
       phase: "down" | "up",
     ) {
       const key = getTvIptvRemoteKey(event);
-      if (!shouldHandleRemoteInput(event)) return;
+      if (!shouldHandleRemoteInput(event, key)) return;
 
       if (phase === "down" && key !== "Enter") {
         lastEnterKeyDownAtRef.current = 0;
