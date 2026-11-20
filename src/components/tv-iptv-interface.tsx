@@ -131,6 +131,7 @@ export function TvIptvInterface({
   const lastFocusedItemKeyRef = useRef<string | null>(initialFocusedItemKey);
   const lastCategorySlugRef = useRef<string | null>(null);
   const lastEnterKeyDownAtRef = useRef(0);
+  const lastArrowKeyDownRef = useRef<string | null>(null);
   const categoryButtonsRef = useRef(new Map<string, HTMLButtonElement>());
   const optionButtonsRef = useRef(new Map<string, HTMLButtonElement>());
   const backButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -333,14 +334,13 @@ export function TvIptvInterface({
       const activeElement =
         document.activeElement instanceof Element ? document.activeElement : null;
 
-      if (isInsidePlayer(target) || isInsidePlayer(activeElement)) return false;
-
-      if (
+      const isCategoryVerticalNavigation =
         view.kind === "categories" &&
-        (key === "ArrowUp" || key === "ArrowDown" || key === "ArrowRight")
-      ) {
-        return true;
-      }
+        (key === "ArrowUp" || key === "ArrowDown");
+
+      if (isInsidePlayer(target)) return false;
+      if (isCategoryVerticalNavigation) return true;
+      if (isInsidePlayer(activeElement)) return false;
 
       const sidebar = sidebarRef.current;
       if (
@@ -369,6 +369,18 @@ export function TvIptvInterface({
       const key = getTvIptvRemoteKey(event);
       if (!shouldHandleRemoteInput(event, key)) return;
 
+      const isVerticalNavigationKey = key === "ArrowUp" || key === "ArrowDown";
+      if (isVerticalNavigationKey) {
+        if (phase === "down") {
+          lastArrowKeyDownRef.current = key;
+        } else if (lastArrowKeyDownRef.current === key) {
+          lastArrowKeyDownRef.current = null;
+          return;
+        }
+      } else if (phase === "down") {
+        lastArrowKeyDownRef.current = null;
+      }
+
       if (phase === "down" && key !== "Enter") {
         lastEnterKeyDownAtRef.current = 0;
       }
@@ -384,7 +396,7 @@ export function TvIptvInterface({
         return;
       }
 
-      if (phase === "up" && key !== "Enter") return;
+      if (phase === "up" && key !== "Enter" && !isVerticalNavigationKey) return;
 
       if (key === "Enter") {
         const item = getSidebarItem(event.target);
@@ -405,7 +417,7 @@ export function TvIptvInterface({
         return;
       }
 
-      if (phase === "up") return;
+      if (phase === "up" && !isVerticalNavigationKey) return;
 
       const eventTarget = event.target instanceof Element ? event.target : null;
       const activeElement =
@@ -458,11 +470,11 @@ export function TvIptvInterface({
     const handleKeyUp = (event: globalThis.KeyboardEvent) =>
       handleRemoteKey(event, "up");
 
-    document.addEventListener("keydown", handleKeyDown, true);
-    document.addEventListener("keyup", handleKeyUp, true);
+    window.addEventListener("keydown", handleKeyDown, true);
+    window.addEventListener("keyup", handleKeyUp, true);
     return () => {
-      document.removeEventListener("keydown", handleKeyDown, true);
-      document.removeEventListener("keyup", handleKeyUp, true);
+      window.removeEventListener("keydown", handleKeyDown, true);
+      window.removeEventListener("keyup", handleKeyUp, true);
     };
   }, [focusListItem, focusPlayer, getSidebarItem, returnToCategories, view]);
 
