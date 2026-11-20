@@ -1,33 +1,27 @@
-import { CatalogBrowser } from "@/components/catalog-browser";
-import { SiteHeader } from "@/components/site-header";
+import { TvIptvInterface } from "@/components/tv-iptv-interface";
+import { PublicInspectionShortcutGuard } from "@/components/public-inspection-shortcut-guard";
 import { getPublishedCatalog } from "@/lib/channels";
-import { getPublishedGameSchedule } from "@/lib/games";
+import { getProviderEmbedReferrerPolicy } from "@/lib/embed-provider-policy.server";
 
 export const dynamic = "force-dynamic";
 
-type TvPageProps = {
-  searchParams: Promise<{ categoria?: string; foco?: string; busca?: string }>;
-};
-
-export default async function TvPage({ searchParams }: TvPageProps) {
-  const [catalog, schedule, params] = await Promise.all([
-    getPublishedCatalog(),
-    getPublishedGameSchedule(),
-    searchParams,
-  ]);
+export default async function TvPage() {
+  const catalog = await getPublishedCatalog();
+  const referrerPoliciesByChannel = Object.fromEntries(
+    catalog.channels.map((channel) => [
+      channel.id,
+      channel.embedUrls.map(getProviderEmbedReferrerPolicy),
+    ]),
+  );
 
   return (
     <>
-      <SiteHeader tv />
-      <CatalogBrowser
+      <PublicInspectionShortcutGuard />
+      <TvIptvInterface
         channels={catalog.channels}
-        games={schedule.games}
         categories={catalog.categories}
-        mode="tv"
         status={catalog.status}
-        initialCategorySlug={params.categoria}
-        initialFocusSlug={params.foco}
-        initialQuery={params.busca}
+        referrerPoliciesByChannel={referrerPoliciesByChannel}
       />
     </>
   );
