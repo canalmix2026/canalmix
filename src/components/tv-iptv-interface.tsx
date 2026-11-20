@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type FocusEvent,
   type KeyboardEvent,
 } from "react";
 import Link from "next/link";
@@ -92,7 +93,9 @@ export function TvIptvInterface({
 }: TvIptvProps) {
   const [view, setView] = useState<TvIptvView>({ kind: "categories" });
   const [playingOptionKey, setPlayingOptionKey] = useState<string | null>(null);
+  const [focusedItemKey, setFocusedItemKey] = useState<string | null>(null);
   const lastCategorySlugRef = useRef<string | null>(null);
+  const lastEnterKeyDownAtRef = useRef(0);
   const categoryButtonsRef = useRef(new Map<string, HTMLButtonElement>());
   const optionButtonsRef = useRef(new Map<string, HTMLButtonElement>());
   const backButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -196,15 +199,32 @@ export function TvIptvInterface({
     setView({ kind: "categories" });
   }
 
-  function handleRemoteNavigation(event: KeyboardEvent<HTMLElement>) {
+  function handleSidebarBlur(event: FocusEvent<HTMLElement>) {
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) {
+      return;
+    }
+    setFocusedItemKey(null);
+  }
+
+  function handleRemoteNavigation(
+    event: KeyboardEvent<HTMLElement>,
+    phase: "down" | "up",
+  ) {
     const key = getTvIptvRemoteKey(event);
 
-    if ((key === "Back" || key === "ArrowLeft") && view.kind === "options") {
+    if (
+      phase === "down" &&
+      (key === "Back" || key === "ArrowLeft") &&
+      view.kind === "options"
+    ) {
       event.preventDefault();
       event.stopPropagation();
       returnToCategories();
       return;
     }
+
+    if (phase === "up" && key !== "Enter") return;
 
     const eventTarget =
       event.target instanceof HTMLElement ? event.target : null;
@@ -220,12 +240,24 @@ export function TvIptvInterface({
 
     if (key === "Enter") {
       event.preventDefault();
+      event.stopPropagation();
+
+      if (phase === "up") {
+        if (Date.now() - lastEnterKeyDownAtRef.current < 900) {
+          lastEnterKeyDownAtRef.current = 0;
+          return;
+        }
+      } else {
+        lastEnterKeyDownAtRef.current = Date.now();
+      }
+
       if (!event.repeat && focusedItem instanceof HTMLButtonElement) {
         focusedItem.click();
       }
       return;
     }
 
+    if (phase === "up") return;
     if (key !== "ArrowUp" && key !== "ArrowDown") return;
 
     const items = Array.from(
@@ -246,7 +278,9 @@ export function TvIptvInterface({
         <aside
           aria-label="Navegação de canais"
           className="tv-iptv__sidebar"
-          onKeyDown={handleRemoteNavigation}
+          onBlurCapture={handleSidebarBlur}
+          onKeyDownCapture={(event) => handleRemoteNavigation(event, "down")}
+          onKeyUpCapture={(event) => handleRemoteNavigation(event, "up")}
         >
           <div className="tv-iptv__sidebar-top">
             <BrandLogo href="/tv" />
@@ -258,9 +292,14 @@ export function TvIptvInterface({
 
           {view.kind === "options" && (
             <button
-              className="tv-iptv__back"
+              className={
+                "tv-iptv__back" +
+                (focusedItemKey === "back" ? " tv-iptv__item--focused" : "")
+              }
+              data-tv-iptv-key="back"
               data-tv-iptv-item
               onClick={returnToCategories}
+              onFocus={() => setFocusedItemKey("back")}
               ref={backButtonRef}
               type="button"
             >
@@ -297,10 +336,19 @@ export function TvIptvInterface({
                   return (
                     <button
                       aria-label={`${category.name}, ${count} ${count === 1 ? "opção" : "opções"}`}
-                      className="tv-iptv__item"
+                      className={
+                        "tv-iptv__item" +
+                        (focusedItemKey === `category:${category.slug}`
+                          ? " tv-iptv__item--focused"
+                          : "")
+                      }
+                      data-tv-iptv-key={`category:${category.slug}`}
                       data-tv-iptv-item
                       key={category.slug}
                       onClick={() => openCategory(category.slug)}
+                      onFocus={() =>
+                        setFocusedItemKey(`category:${category.slug}`)
+                      }
                       ref={(element) => {
                         if (element) categoryButtonsRef.current.set(category.slug, element);
                         else categoryButtonsRef.current.delete(category.slug);
@@ -329,11 +377,16 @@ export function TvIptvInterface({
                     aria-label={`${option.channel.name} (Opção ${option.optionNumber})${isPlaying ? ", reproduzindo" : ""}`}
                     className={
                       "tv-iptv__item tv-iptv__option" +
+                      (focusedItemKey === `option:${option.key}`
+                        ? " tv-iptv__item--focused"
+                        : "") +
                       (isPlaying ? " tv-iptv__item--playing" : "")
                     }
+                    data-tv-iptv-key={`option:${option.key}`}
                     data-tv-iptv-item
                     key={option.key}
                     onClick={() => setPlayingOptionKey(option.key)}
+                    onFocus={() => setFocusedItemKey(`option:${option.key}`)}
                     ref={(element) => {
                       if (element) optionButtonsRef.current.set(option.key, element);
                       else optionButtonsRef.current.delete(option.key);

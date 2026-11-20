@@ -4892,7 +4892,7 @@ select:focus-visible {
 }
 
 .tv-iptv__back:hover,
-.tv-iptv__back:focus-visible {
+.tv-iptv__back:focus {
   border-color: var(--aqua);
   color: var(--night);
   background: var(--aqua);
@@ -4971,8 +4971,9 @@ select:focus-visible {
   background: var(--surface);
 }
 
-.tv-iptv__item:focus-visible,
-.tv-iptv__back:focus-visible {
+.tv-iptv__item:focus,
+.tv-iptv__item--focused,
+.tv-iptv__back:focus {
   outline: 3px solid var(--aqua);
   outline-offset: 1px;
   border-color: var(--aqua);
@@ -4994,7 +4995,8 @@ select:focus-visible {
   font-weight: 500;
 }
 
-.tv-iptv__item:focus-visible .tv-iptv__item-subtitle {
+.tv-iptv__item:focus .tv-iptv__item-subtitle,
+.tv-iptv__item--focused .tv-iptv__item-subtitle {
   color: rgba(7, 20, 33, 0.78);
 }
 
@@ -5023,7 +5025,8 @@ select:focus-visible {
   background: var(--surface-raised);
 }
 
-.tv-iptv__item:focus-visible .tv-iptv__channel-icon {
+.tv-iptv__item:focus .tv-iptv__channel-icon,
+.tv-iptv__item--focused .tv-iptv__channel-icon {
   color: var(--night);
   background: rgba(16, 18, 51, 0.12);
 }
@@ -5048,7 +5051,8 @@ select:focus-visible {
   text-transform: uppercase;
 }
 
-.tv-iptv__item:focus-visible .tv-iptv__playing-label {
+.tv-iptv__item:focus .tv-iptv__playing-label,
+.tv-iptv__item--focused .tv-iptv__playing-label {
   border-color: rgba(7, 20, 33, 0.3);
   color: var(--night);
 }
