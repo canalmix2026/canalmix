@@ -4692,6 +4692,17 @@ select:focus-visible {
 }
 
 @media (max-width: 760px) {
+  .public-site-layout .pix-donation-aside {
+    top: 50vh;
+    top: 50dvh;
+    right: auto;
+    bottom: auto;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+}
+
+@media (max-width: 760px) {
   .public-site-layout .pix-donation-launcher {
     top: 50vh;
     top: 50dvh;
