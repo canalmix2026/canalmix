@@ -4789,7 +4789,7 @@ select:focus-visible {
   width: 100%;
   height: 100vh;
   height: 100dvh;
-  min-height: 520px;
+  min-height: 0;
   margin: 0;
   padding: clamp(14px, 2vh, 24px) clamp(16px, 2vw, 34px) clamp(10px, 1.5vh, 18px);
   display: grid;
@@ -5142,7 +5142,7 @@ select:focus-visible {
 .tv-iptv__empty-player {
   width: 100%;
   height: 100%;
-  min-height: 180px;
+  min-height: 0;
   padding: 24px;
   display: grid;
   place-items: center;
@@ -5241,9 +5241,9 @@ select:focus-visible {
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait) {
   .tv-iptv {
-    min-height: 520px;
+    min-height: 0;
     padding: 12px;
     gap: 10px;
   }
@@ -5348,3 +5348,104 @@ select:focus-visible {
     display: none;
   }
 }
+
+@media (max-width: 760px) and (orientation: landscape) {
+  .tv-iptv {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .tv-iptv__workspace {
+    grid-template-columns: minmax(170px, 29vw) minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .tv-iptv__sidebar {
+    padding-right: 8px;
+  }
+
+  .tv-iptv__sidebar-top {
+    min-height: 44px;
+    margin-bottom: 6px;
+  }
+
+  .tv-iptv__sidebar-top .brand {
+    gap: 4px;
+  }
+
+  .tv-iptv__sidebar-top .brand__symbol {
+    width: 32px;
+    height: 28px;
+  }
+
+  .tv-iptv__sidebar-top .brand__screen {
+    width: 28px;
+    height: 23px;
+    border-radius: 7px;
+  }
+
+  .tv-iptv__sidebar-top .brand__screen--front svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .tv-iptv__sidebar-top .brand__wordmark {
+    font-size: 19px;
+  }
+
+  .tv-iptv__exit {
+    min-height: 32px;
+    padding: 0 7px;
+  }
+
+  .tv-iptv__exit span {
+    display: none;
+  }
+
+  .tv-iptv__back {
+    min-height: 40px;
+    margin-bottom: 6px;
+    padding-inline: 9px;
+    font-size: 12px;
+  }
+
+  .tv-iptv__sidebar-heading h1 {
+    font-size: 17px;
+  }
+
+  .tv-iptv__list {
+    padding: 4px 3px 4px 0;
+    gap: 4px;
+  }
+
+  .tv-iptv__item {
+    min-height: 42px;
+    padding: 5px 7px;
+    font-size: 14px;
+  }
+
+  .tv-iptv__channel-image,
+  .tv-iptv__channel-icon {
+    width: 32px;
+    height: 32px;
+    flex-basis: 32px;
+  }
+
+  .tv-iptv__remote-bar {
+    min-height: 44px;
+    padding: 4px 6px;
+    gap: 7px;
+  }
+
+  .tv-iptv__hint {
+    gap: 5px;
+    font-size: 12px;
+  }
+
+  .tv-iptv__hint + .tv-iptv__hint {
+    padding-left: 7px;
+  }
+
+  .tv-iptv__hint kbd {
+    min-width: 28px;
+    height: 26px;

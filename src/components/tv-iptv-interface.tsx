@@ -384,10 +384,8 @@ export function TvIptvInterface({
       const direction = key === "ArrowDown" ? 1 : -1;
       const nextIndex =
         currentIndex < 0
-          ? direction > 0
-            ? 0
-            : items.length - 1
-          : (currentIndex + direction + items.length) % items.length;
+          ? 0
+          : Math.max(0, Math.min(items.length - 1, currentIndex + direction));
 
       event.preventDefault();
       event.stopPropagation();
