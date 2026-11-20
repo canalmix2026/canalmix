@@ -43,10 +43,34 @@ type TvIptvView =
 const TV_ITEM_SELECTOR = "[data-tv-iptv-item]";
 
 function getTvIptvRemoteKey(event: KeyboardEvent) {
+  if (
+    [
+      "Enter",
+      "NumpadEnter",
+      "Return",
+      "Accept",
+      "Select",
+      "OK",
+      "Ok",
+      "Go",
+      "BrowserSelect",
+      " ",
+      "Spacebar",
+    ].includes(event.key) ||
+    ["Enter", "NumpadEnter", "Space"].includes(event.code)
+  ) {
+    return "Enter";
+  }
+
   const key = getTvRemoteKey(event.nativeEvent);
   if (key !== event.key) return key;
 
   switch (event.keyCode || event.which) {
+    case 13:
+    case 23:
+    case 66:
+    case 160:
+      return "Enter";
     case 19:
       return "ArrowUp";
     case 20:
@@ -182,15 +206,23 @@ export function TvIptvInterface({
       return;
     }
 
-    const focusedItem =
-      event.target instanceof HTMLElement
-        ? event.target.closest<HTMLElement>(TV_ITEM_SELECTOR)
+    const eventTarget =
+      event.target instanceof HTMLElement ? event.target : null;
+    const activeElement =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
         : null;
+    const focusedItem =
+      eventTarget?.closest<HTMLElement>(TV_ITEM_SELECTOR) ??
+      activeElement?.closest<HTMLElement>(TV_ITEM_SELECTOR) ??
+      null;
     if (!focusedItem || !event.currentTarget.contains(focusedItem)) return;
 
     if (key === "Enter") {
       event.preventDefault();
-      if (focusedItem instanceof HTMLButtonElement) focusedItem.click();
+      if (!event.repeat && focusedItem instanceof HTMLButtonElement) {
+        focusedItem.click();
+      }
       return;
     }
 
