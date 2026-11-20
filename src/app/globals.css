@@ -4867,7 +4867,8 @@ select:focus-visible {
 }
 
 .tv-iptv__exit:hover,
-.tv-iptv__exit:focus-visible {
+.tv-iptv__exit:focus-visible,
+.tv-iptv__exit--focused {
   border-color: var(--aqua);
   color: var(--aqua);
 }

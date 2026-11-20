@@ -9,8 +9,7 @@ import {
   type FocusEvent,
 } from "react";
 import Link from "next/link";
-import { ArrowLeft, ChevronRight, Tv2 } from "lucide-react";
-import { BrandLogo } from "@/components/brand-logo";
+import { ArrowLeft, ChevronRight, Play, Tv2 } from "lucide-react";
 import { ChannelPlayer } from "@/components/channel-player";
 import type { CatalogResult, ChannelCardData } from "@/lib/channels";
 import type { CategoryOption } from "@/lib/categories";
@@ -418,7 +417,7 @@ export function TvIptvInterface({
           lastEnterKeyDownAtRef.current = Date.now();
         }
 
-        if (!event.repeat && item instanceof HTMLButtonElement) item.click();
+        if (!event.repeat) item.click();
         return;
       }
 
@@ -493,8 +492,30 @@ export function TvIptvInterface({
           ref={sidebarRef}
         >
           <div className="tv-iptv__sidebar-top">
-            <BrandLogo href="/tv" />
-            <Link className="tv-iptv__exit" href="/">
+            <span aria-label="CanalMix" className="brand" role="img">
+              <span aria-hidden="true" className="brand__symbol">
+                <span className="brand__screen brand__screen--back" />
+                <span className="brand__screen brand__screen--front">
+                  <Play fill="currentColor" size={22} strokeWidth={1.5} />
+                </span>
+              </span>
+              <span className="brand__wordmark">
+                Canal<span>Mix</span>
+              </span>
+            </span>
+            <Link
+              className={
+                "tv-iptv__exit" +
+                (focusedItemKey === "exit" ? " tv-iptv__exit--focused" : "")
+              }
+              data-tv-iptv-item
+              data-tv-iptv-key="exit"
+              href="/"
+              onFocus={() => {
+                lastFocusedItemKeyRef.current = "exit";
+                setFocusedItemKey("exit");
+              }}
+            >
               <ArrowLeft aria-hidden="true" size={17} />
               <span>Sair do Modo TV</span>
             </Link>
