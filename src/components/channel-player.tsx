@@ -14,6 +14,7 @@ import { EmbedFrame } from "@/components/embed-frame";
 import { HlsVideoPlayer } from "@/components/hls-video-player";
 import { YouTubeEmbedFrame } from "@/components/youtube-embed-frame";
 import { ReportStreamIssueDialog } from "@/components/report-stream-issue-dialog";
+import { useVisitorPlaybackPresence } from "@/components/visitor-presence-provider";
 import type { EmbedReferrerPolicy } from "@/lib/embed-provider-policy-core";
 
 function getNativeVideoMimeType(src: string) {
@@ -98,6 +99,7 @@ export function ChannelPlayer({
 }) {
   const router = useRouter();
   const [selectedOption, setSelectedOption] = useState(0);
+  useVisitorPlaybackPresence(channelId, channelName, selectedOption + 1);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);

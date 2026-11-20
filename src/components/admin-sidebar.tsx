@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AlertCircle, CalendarDays, ChevronDown, Clapperboard, HeartHandshake, Shield, Tv } from "lucide-react";
+import { Activity, AlertCircle, CalendarDays, ChevronDown, Clapperboard, HeartHandshake, Shield, Tv } from "lucide-react";
 
 const ADMIN_SECTIONS = [
   { href: "/admin/canais", label: "Canais", icon: Tv },
@@ -12,6 +12,7 @@ const ADMIN_SECTIONS = [
   { href: "/admin/times", label: "Times e escudos", icon: Shield },
   { href: "/admin/doacoes", label: "Doações Pix", icon: HeartHandshake },
   { href: "/admin/problemas", label: "Problemas Reportados", icon: AlertCircle },
+  { href: "/admin/usuarios-online", label: "Usuários online", icon: Activity },
 ];
 
 export function AdminSidebar({ pendingIssues }: { pendingIssues: number }) {

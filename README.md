@@ -101,6 +101,8 @@ NEXT_PUBLIC_SUPABASE_URL=https://cyymtfofyhgcsoxefetn.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<chave publicável do projeto>
 ~~~
 
+Para registrar visitantes na tela **Usuários online**, configure também `SUPABASE_SERVICE_ROLE_KEY` em Production e Preview. Essa chave é usada somente pelo endpoint de heartbeat no servidor; nunca use o prefixo `NEXT_PUBLIC_`.
+
 As variáveis `NEXT_PUBLIC_` são incorporadas ao bundle durante o build. Defina-as antes de iniciar ou repetir o deploy. Use somente a chave publicável; a chave `service_role` não deve ser colocada na Vercel como variável `NEXT_PUBLIC_` nem no código do site.
 
 Antes de aplicar migrations, confira no projeto Supabase se o esquema e o histórico já existem. Se o projeto estiver vazio, vincule o CLI ao projeto e aplique as migrations com o CLI atual:

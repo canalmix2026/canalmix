@@ -1,14 +1,17 @@
 import type { ReactNode } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import { AdminSidebar } from "@/components/admin-sidebar";
+import { AdminOnlineVisitorCounter } from "@/components/admin-online-visitors";
 import { logoutAdminAction } from "@/app/admin/actions";
 
 export function AdminShell({
   children,
   pendingIssues,
+  showOnlineCounter = false,
 }: {
   children: ReactNode;
   pendingIssues: number;
+  showOnlineCounter?: boolean;
 }) {
   return (
     <main className="admin-page">
@@ -22,7 +25,10 @@ export function AdminShell({
       </header>
       <div className="admin-shell-layout">
         <AdminSidebar pendingIssues={pendingIssues} />
-        <div className="admin-shell-layout__content">{children}</div>
+        <div className="admin-shell-layout__content">
+          {showOnlineCounter && <AdminOnlineVisitorCounter />}
+          {children}
+        </div>
       </div>
     </main>
   );

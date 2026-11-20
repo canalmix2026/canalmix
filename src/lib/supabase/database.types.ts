@@ -104,6 +104,17 @@ export type PixDonationSettingsRow = {
   updated_at: string;
 };
 
+export type OnlineVisitorSessionRow = {
+  session_id: string;
+  device_type: "mobile" | "tablet" | "desktop" | "tv";
+  page_key: "home" | "tv" | "schedule" | "channel" | "privacy" | "other";
+  category_slug: string | null;
+  channel_name: string | null;
+  selected_option: number | null;
+  started_at: string;
+  last_activity_at: string;
+};
+
 type Table<Row, Insert, Update> = {
   Row: Row;
   Insert: Insert;
@@ -114,6 +125,11 @@ type Table<Row, Insert, Update> = {
 export type Database = {
   public: {
     Tables: {
+      online_visitor_sessions: Table<
+        OnlineVisitorSessionRow,
+        OnlineVisitorSessionRow,
+        Partial<OnlineVisitorSessionRow>
+      >;
       categories: Table<
         CategoryRow,
         { id?: number; slug: string; name: string; is_active?: boolean; created_at?: string },

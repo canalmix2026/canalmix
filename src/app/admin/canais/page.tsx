@@ -22,7 +22,7 @@ export default async function AdminChannelsPage() {
 
   if (catalog.status !== "ready") {
     return (
-      <AdminShell pendingIssues={Object.values(pendingIssueCounts).reduce((sum, count) => sum + count, 0)}>
+      <AdminShell pendingIssues={Object.values(pendingIssueCounts).reduce((sum, count) => sum + count, 0)} showOnlineCounter>
         <p className="setup-notice" role="status">
           Não foi possível carregar os canais. Verifique as migrations e o Supabase local.
         </p>
@@ -31,7 +31,7 @@ export default async function AdminChannelsPage() {
   }
 
   return (
-    <AdminShell pendingIssues={Object.values(pendingIssueCounts).reduce((sum, count) => sum + count, 0)}>
+    <AdminShell pendingIssues={Object.values(pendingIssueCounts).reduce((sum, count) => sum + count, 0)} showOnlineCounter>
       <AdminPanel
         channels={catalog.channels}
         categories={catalog.categories}
