@@ -7,7 +7,6 @@ import {
   useRef,
   useState,
   type FocusEvent,
-  type KeyboardEvent,
 } from "react";
 import Link from "next/link";
 import { ArrowLeft, ChevronRight, Tv2 } from "lucide-react";
@@ -42,8 +41,14 @@ type TvIptvView =
   | { kind: "options"; categorySlug: string };
 
 const TV_ITEM_SELECTOR = "[data-tv-iptv-item]";
+const TV_PLAYER_SELECTOR = ".tv-iptv__main .channel-player";
 
-function getTvIptvRemoteKey(event: KeyboardEvent) {
+type TvIptvKeyboardEvent = Pick<
+  globalThis.KeyboardEvent,
+  "key" | "code" | "keyCode" | "which"
+>;
+
+function getTvIptvRemoteKey(event: TvIptvKeyboardEvent) {
   if (
     [
       "Enter",
@@ -63,7 +68,7 @@ function getTvIptvRemoteKey(event: KeyboardEvent) {
     return "Enter";
   }
 
-  const key = getTvRemoteKey(event.nativeEvent);
+  const key = getTvRemoteKey(event);
   if (key !== event.key) return key;
 
   switch (event.keyCode || event.which) {
@@ -93,12 +98,20 @@ export function TvIptvInterface({
 }: TvIptvProps) {
   const [view, setView] = useState<TvIptvView>({ kind: "categories" });
   const [playingOptionKey, setPlayingOptionKey] = useState<string | null>(null);
-  const [focusedItemKey, setFocusedItemKey] = useState<string | null>(null);
+  const [focusedItemKey, setFocusedItemKey] = useState<string | null>(() =>
+    categories[0] ? `category:${categories[0].slug}` : null,
+  );
+  const initialFocusedItemKey = categories[0]
+    ? `category:${categories[0].slug}`
+    : null;
+  const lastFocusedItemKeyRef = useRef<string | null>(initialFocusedItemKey);
   const lastCategorySlugRef = useRef<string | null>(null);
   const lastEnterKeyDownAtRef = useRef(0);
   const categoryButtonsRef = useRef(new Map<string, HTMLButtonElement>());
   const optionButtonsRef = useRef(new Map<string, HTMLButtonElement>());
   const backButtonRef = useRef<HTMLButtonElement | null>(null);
+  const sidebarRef = useRef<HTMLElement | null>(null);
+  const playerStageRef = useRef<HTMLDivElement | null>(null);
   const listRef = useRef<HTMLElement | null>(null);
 
   const options = useMemo(() => {
@@ -155,6 +168,11 @@ export function TvIptvInterface({
 
   const focusListItem = useCallback((item: HTMLElement | null) => {
     if (!item) return;
+    const itemKey = item.dataset.tvIptvKey;
+    if (itemKey) {
+      lastFocusedItemKeyRef.current = itemKey;
+      setFocusedItemKey(itemKey);
+    }
     item.focus({ preventScroll: true });
 
     const list = listRef.current;
@@ -188,16 +206,27 @@ export function TvIptvInterface({
     return () => window.cancelAnimationFrame(frame);
   }, [categories, focusListItem, view, visibleOptions]);
 
-  function openCategory(categorySlug: string) {
-    lastCategorySlugRef.current = categorySlug;
-    if (listRef.current) listRef.current.scrollTop = 0;
-    setView({ kind: "options", categorySlug });
-  }
+  const openCategory = useCallback(
+    (categorySlug: string) => {
+      lastCategorySlugRef.current = categorySlug;
+      const firstOption = optionsByCategory.get(categorySlug)?.[0];
+      const nextFocusedKey = firstOption ? `option:${firstOption.key}` : "back";
+      lastFocusedItemKeyRef.current = nextFocusedKey;
+      setFocusedItemKey(nextFocusedKey);
+      if (listRef.current) listRef.current.scrollTop = 0;
+      setView({ kind: "options", categorySlug });
+    },
+    [optionsByCategory],
+  );
 
-  function returnToCategories() {
+  const returnToCategories = useCallback(() => {
+    const categorySlug = lastCategorySlugRef.current ?? categories[0]?.slug;
+    const nextFocusedKey = categorySlug ? `category:${categorySlug}` : null;
+    lastFocusedItemKeyRef.current = nextFocusedKey;
+    setFocusedItemKey(nextFocusedKey);
     if (listRef.current) listRef.current.scrollTop = 0;
     setView({ kind: "categories" });
-  }
+  }, [categories]);
 
   function handleSidebarBlur(event: FocusEvent<HTMLElement>) {
     const nextTarget = event.relatedTarget;
@@ -207,70 +236,176 @@ export function TvIptvInterface({
     setFocusedItemKey(null);
   }
 
-  function handleRemoteNavigation(
-    event: KeyboardEvent<HTMLElement>,
-    phase: "down" | "up",
-  ) {
-    const key = getTvIptvRemoteKey(event);
+  const getSidebarItem = useCallback(
+    (target: EventTarget | null) => {
+      const sidebar = sidebarRef.current;
+      if (!sidebar) return null;
 
-    if (
-      phase === "down" &&
-      (key === "Back" || key === "ArrowLeft") &&
-      view.kind === "options"
+      const items = Array.from(
+        sidebar.querySelectorAll<HTMLElement>(TV_ITEM_SELECTOR),
+      ).filter((item) => !item.hasAttribute("disabled"));
+      const targetElement = target instanceof Element ? target : null;
+      const activeElement =
+        document.activeElement instanceof Element ? document.activeElement : null;
+
+      for (const candidate of [targetElement, activeElement]) {
+        const item = candidate?.closest<HTMLElement>(TV_ITEM_SELECTOR);
+        if (item && sidebar.contains(item)) return item;
+      }
+
+      const preferredKey = focusedItemKey ?? lastFocusedItemKeyRef.current;
+      return (
+        items.find((item) => item.dataset.tvIptvKey === preferredKey) ??
+        items[0] ??
+        null
+      );
+    },
+    [focusedItemKey],
+  );
+
+  const focusPlayer = useCallback(() => {
+    const stage = playerStageRef.current;
+    const target = stage?.querySelector<HTMLElement>("iframe, video") ?? stage;
+    if (!target) return;
+
+    target.focus({ preventScroll: true });
+    setFocusedItemKey(null);
+  }, []);
+
+  useEffect(() => {
+    function isInsidePlayer(target: EventTarget | null) {
+      return target instanceof Element && Boolean(target.closest(TV_PLAYER_SELECTOR));
+    }
+
+    function shouldHandleRemoteInput(event: globalThis.KeyboardEvent) {
+      const target = event.target instanceof Element ? event.target : null;
+      const activeElement =
+        document.activeElement instanceof Element ? document.activeElement : null;
+
+      if (isInsidePlayer(target) || isInsidePlayer(activeElement)) return false;
+
+      const sidebar = sidebarRef.current;
+      if (
+        sidebar &&
+        ((target && sidebar.contains(target)) ||
+          (activeElement && sidebar.contains(activeElement)))
+      ) {
+        return true;
+      }
+
+      if (target === playerStageRef.current || activeElement === playerStageRef.current) {
+        return true;
+      }
+
+      return (
+        !activeElement ||
+        activeElement === document.body ||
+        activeElement === document.documentElement
+      );
+    }
+
+    function handleRemoteKey(
+      event: globalThis.KeyboardEvent,
+      phase: "down" | "up",
     ) {
-      event.preventDefault();
-      event.stopPropagation();
-      returnToCategories();
-      return;
-    }
+      const key = getTvIptvRemoteKey(event);
+      if (!shouldHandleRemoteInput(event)) return;
 
-    if (phase === "up" && key !== "Enter") return;
+      if (phase === "down" && key !== "Enter") {
+        lastEnterKeyDownAtRef.current = 0;
+      }
 
-    const eventTarget =
-      event.target instanceof HTMLElement ? event.target : null;
-    const activeElement =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null;
-    const focusedItem =
-      eventTarget?.closest<HTMLElement>(TV_ITEM_SELECTOR) ??
-      activeElement?.closest<HTMLElement>(TV_ITEM_SELECTOR) ??
-      null;
-    if (!focusedItem || !event.currentTarget.contains(focusedItem)) return;
+      if (
+        phase === "down" &&
+        (key === "Back" || key === "ArrowLeft") &&
+        view.kind === "options"
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        returnToCategories();
+        return;
+      }
 
-    if (key === "Enter") {
-      event.preventDefault();
-      event.stopPropagation();
+      if (phase === "up" && key !== "Enter") return;
 
-      if (phase === "up") {
-        if (Date.now() - lastEnterKeyDownAtRef.current < 900) {
-          lastEnterKeyDownAtRef.current = 0;
-          return;
+      if (key === "Enter") {
+        const item = getSidebarItem(event.target);
+        if (!item) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+        if (phase === "up") {
+          if (Date.now() - lastEnterKeyDownAtRef.current < 900) {
+            lastEnterKeyDownAtRef.current = 0;
+            return;
+          }
+        } else {
+          lastEnterKeyDownAtRef.current = Date.now();
         }
-      } else {
-        lastEnterKeyDownAtRef.current = Date.now();
+
+        if (!event.repeat && item instanceof HTMLButtonElement) item.click();
+        return;
       }
 
-      if (!event.repeat && focusedItem instanceof HTMLButtonElement) {
-        focusedItem.click();
+      if (phase === "up") return;
+
+      const eventTarget = event.target instanceof Element ? event.target : null;
+      const activeElement =
+        document.activeElement instanceof Element ? document.activeElement : null;
+      const stageHasFocus =
+        eventTarget === playerStageRef.current ||
+        activeElement === playerStageRef.current;
+
+      if (key === "ArrowLeft" && stageHasFocus) {
+        event.preventDefault();
+        event.stopPropagation();
+        focusListItem(getSidebarItem(event.target));
+        return;
       }
-      return;
+
+      if (key === "ArrowRight") {
+        event.preventDefault();
+        event.stopPropagation();
+        focusPlayer();
+        return;
+      }
+
+      if (key !== "ArrowUp" && key !== "ArrowDown") return;
+
+      const sidebar = sidebarRef.current;
+      if (!sidebar) return;
+      const items = Array.from(
+        sidebar.querySelectorAll<HTMLElement>(TV_ITEM_SELECTOR),
+      ).filter((item) => !item.hasAttribute("disabled"));
+      if (items.length === 0) return;
+
+      const currentItem = getSidebarItem(event.target);
+      const currentIndex = currentItem ? items.indexOf(currentItem) : -1;
+      const direction = key === "ArrowDown" ? 1 : -1;
+      const nextIndex =
+        currentIndex < 0
+          ? direction > 0
+            ? 0
+            : items.length - 1
+          : (currentIndex + direction + items.length) % items.length;
+
+      event.preventDefault();
+      event.stopPropagation();
+      focusListItem(items[nextIndex]);
     }
 
-    if (phase === "up") return;
-    if (key !== "ArrowUp" && key !== "ArrowDown") return;
+    const handleKeyDown = (event: globalThis.KeyboardEvent) =>
+      handleRemoteKey(event, "down");
+    const handleKeyUp = (event: globalThis.KeyboardEvent) =>
+      handleRemoteKey(event, "up");
 
-    const items = Array.from(
-      event.currentTarget.querySelectorAll<HTMLElement>(TV_ITEM_SELECTOR),
-    ).filter((item) => !item.hasAttribute("disabled"));
-    const currentIndex = items.indexOf(focusedItem);
-    if (currentIndex < 0 || items.length < 1) return;
-
-    event.preventDefault();
-    const direction = key === "ArrowDown" ? 1 : -1;
-    const nextIndex = (currentIndex + direction + items.length) % items.length;
-    focusListItem(items[nextIndex]);
-  }
+    document.addEventListener("keydown", handleKeyDown, true);
+    document.addEventListener("keyup", handleKeyUp, true);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown, true);
+      document.removeEventListener("keyup", handleKeyUp, true);
+    };
+  }, [focusListItem, focusPlayer, getSidebarItem, returnToCategories, view]);
 
   return (
     <main className="tv-iptv">
@@ -279,8 +414,7 @@ export function TvIptvInterface({
           aria-label="Navegação de canais"
           className="tv-iptv__sidebar"
           onBlurCapture={handleSidebarBlur}
-          onKeyDownCapture={(event) => handleRemoteNavigation(event, "down")}
-          onKeyUpCapture={(event) => handleRemoteNavigation(event, "up")}
+          ref={sidebarRef}
         >
           <div className="tv-iptv__sidebar-top">
             <BrandLogo href="/tv" />
@@ -298,8 +432,12 @@ export function TvIptvInterface({
               }
               data-tv-iptv-key="back"
               data-tv-iptv-item
+              autoFocus={visibleOptions.length === 0}
               onClick={returnToCategories}
-              onFocus={() => setFocusedItemKey("back")}
+              onFocus={() => {
+                lastFocusedItemKeyRef.current = "back";
+                setFocusedItemKey("back");
+              }}
               ref={backButtonRef}
               type="button"
             >
@@ -344,10 +482,18 @@ export function TvIptvInterface({
                       }
                       data-tv-iptv-key={`category:${category.slug}`}
                       data-tv-iptv-item
+                      autoFocus={
+                        category.slug ===
+                        (lastCategorySlugRef.current ?? categories[0]?.slug)
+                      }
                       key={category.slug}
                       onClick={() => openCategory(category.slug)}
                       onFocus={() =>
-                        setFocusedItemKey(`category:${category.slug}`)
+                        {
+                          lastFocusedItemKeyRef.current =
+                            `category:${category.slug}`;
+                          setFocusedItemKey(`category:${category.slug}`);
+                        }
                       }
                       ref={(element) => {
                         if (element) categoryButtonsRef.current.set(category.slug, element);
@@ -384,9 +530,13 @@ export function TvIptvInterface({
                     }
                     data-tv-iptv-key={`option:${option.key}`}
                     data-tv-iptv-item
+                    autoFocus={option.key === visibleOptions[0]?.key}
                     key={option.key}
                     onClick={() => setPlayingOptionKey(option.key)}
-                    onFocus={() => setFocusedItemKey(`option:${option.key}`)}
+                    onFocus={() => {
+                      lastFocusedItemKeyRef.current = `option:${option.key}`;
+                      setFocusedItemKey(`option:${option.key}`);
+                    }}
                     ref={(element) => {
                       if (element) optionButtonsRef.current.set(option.key, element);
                       else optionButtonsRef.current.delete(option.key);
@@ -423,7 +573,11 @@ export function TvIptvInterface({
         </aside>
 
         <section aria-label="Player de TV" className="tv-iptv__main">
-          <div className="tv-iptv__video-stage">
+          <div
+            className="tv-iptv__video-stage"
+            ref={playerStageRef}
+            tabIndex={-1}
+          >
             {activeOption ? (
               <>
                 <ChannelPlayer
@@ -465,6 +619,9 @@ export function TvIptvInterface({
         </span>
         <span className="tv-iptv__hint">
           <kbd>OK</kbd><span>{view.kind === "categories" ? "Abrir categoria" : "Assistir"}</span>
+        </span>
+        <span className="tv-iptv__hint tv-iptv__hint--player">
+          <kbd>→</kbd><span>Focar player</span>
         </span>
         {view.kind === "options" && (
           <span className="tv-iptv__hint">

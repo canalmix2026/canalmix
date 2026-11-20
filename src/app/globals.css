@@ -5343,4 +5343,8 @@ select:focus-visible {
     padding: 0 5px;
     font-size: 12px;
   }
+
+  .tv-iptv__hint--player span {
+    display: none;
+  }
 }
