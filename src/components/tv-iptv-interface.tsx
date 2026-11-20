@@ -221,7 +221,12 @@ export function TvIptvInterface({
   useEffect(() => {
     const focusVisibleItem = () => {
       if (view.kind === "categories") {
-        const slug = lastCategorySlugRef.current ?? categories[0]?.slug;
+        const rememberedKey = lastFocusedItemKeyRef.current;
+        const rememberedSlug = rememberedKey?.startsWith("category:")
+          ? rememberedKey.slice("category:".length)
+          : null;
+        const slug =
+          rememberedSlug ?? lastCategorySlugRef.current ?? categories[0]?.slug;
         focusListItem(slug ? categoryButtonsRef.current.get(slug) ?? null : null);
         return;
       }
