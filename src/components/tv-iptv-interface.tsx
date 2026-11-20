@@ -68,6 +68,30 @@ function getTvIptvRemoteKey(event: TvIptvKeyboardEvent) {
     return "Enter";
   }
 
+  const remoteKeyAliases: Record<string, string> = {
+    arrowup: "ArrowUp",
+    up: "ArrowUp",
+    dpadup: "ArrowUp",
+    navigateup: "ArrowUp",
+    arrowdown: "ArrowDown",
+    down: "ArrowDown",
+    dpaddown: "ArrowDown",
+    navigatedown: "ArrowDown",
+    arrowleft: "ArrowLeft",
+    left: "ArrowLeft",
+    dpadleft: "ArrowLeft",
+    navigateleft: "ArrowLeft",
+    arrowright: "ArrowRight",
+    right: "ArrowRight",
+    dpadright: "ArrowRight",
+    navigateright: "ArrowRight",
+  };
+
+  for (const value of [event.key, event.code]) {
+    const normalized = value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+    const alias = remoteKeyAliases[normalized];
+    if (alias) return alias;
+  }
   const key = getTvRemoteKey(event);
   if (key !== event.key) return key;
 
@@ -188,7 +212,7 @@ export function TvIptvInterface({
   }, []);
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
+    const focusVisibleItem = () => {
       if (view.kind === "categories") {
         const slug = lastCategorySlugRef.current ?? categories[0]?.slug;
         focusListItem(slug ? categoryButtonsRef.current.get(slug) ?? null : null);
@@ -201,9 +225,27 @@ export function TvIptvInterface({
           ? optionButtonsRef.current.get(firstOption.key) ?? null
           : backButtonRef.current,
       );
-    });
+    };
 
-    return () => window.cancelAnimationFrame(frame);
+    const frame = window.requestAnimationFrame(focusVisibleItem);
+    const startupFocusFallback =
+      view.kind === "categories"
+        ? window.setTimeout(() => {
+            if (
+              document.activeElement === document.body ||
+              document.activeElement === document.documentElement
+            ) {
+              focusVisibleItem();
+            }
+          }, 350)
+        : null;
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      if (startupFocusFallback !== null) {
+        window.clearTimeout(startupFocusFallback);
+      }
+    };
   }, [categories, focusListItem, view, visibleOptions]);
 
   const openCategory = useCallback(
