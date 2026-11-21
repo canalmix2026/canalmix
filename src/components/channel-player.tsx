@@ -407,7 +407,9 @@ export function ChannelPlayer({
         <p className="channel-player__unavailable" role="status">
           Nenhuma opção disponível
         </p>
-      ) : isHls ? (
+      ) : (
+        <div className="channel-player__stage">
+          {isHls ? (
         <HlsVideoPlayer
           key={playerKey}
           src={embedUrl}
@@ -451,6 +453,8 @@ export function ChannelPlayer({
           title={"Player do canal " + channelName}
           referrerPolicy={referrerPolicies[selectedOption]}
         />
+          )}
+        </div>
       )}
       {reportIdempotencyKey && (
         <ReportStreamIssueDialog
