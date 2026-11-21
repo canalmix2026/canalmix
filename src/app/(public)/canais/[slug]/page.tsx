@@ -89,6 +89,7 @@ export default async function ChannelPage({
               className="primary-button"
               href={channel.officialUrl}
               target="_blank"
+              data-canalmix-allow-external="true"
               rel="noopener noreferrer"
             >
               <ExternalLink aria-hidden="true" size={18} />
