@@ -4,6 +4,7 @@
   --surface: #1c2043;
   --surface-raised: #252a54;
   --surface-soft: #171a39;
+  --channel-image-background: radial-gradient(circle at 50% 12%, rgba(121, 87, 255, 0.22), transparent 58%), var(--surface-soft);
   --purple: #7957ff;
   --aqua: #43e7ce;
   --white: #f5f7ff;
@@ -411,9 +412,7 @@ select:focus-visible {
   display: grid;
   place-items: center;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 50% 12%, rgba(121, 87, 255, 0.22), transparent 58%),
-    var(--surface-soft);
+  background: var(--channel-image-background);
 }
 
 .channel-card__image img {
@@ -1540,7 +1539,7 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--surface-soft);
+  background: var(--channel-image-background);
 }
 
 .channel-form__thumbnail-frame img {
