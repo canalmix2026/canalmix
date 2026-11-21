@@ -27,6 +27,16 @@ function errorKind(error: ErrorData, hls: typeof import("hls.js").default) {
   return `hls:${error.details}`;
 }
 
+function playbackErrorMessage(error: string | null) {
+  if (error?.startsWith("http-403")) {
+    return "A fonte recusou a reprodução incorporada neste domínio (HTTP 403). O provedor precisa liberar o player do CanalMix.";
+  }
+  if (error?.startsWith("network:")) {
+    return "A fonte HLS não pode ser carregada neste domínio (rede/CORS). Teste outra opção ou use um player autorizado.";
+  }
+  return "Não foi possível reproduzir esta transmissão. Atualize o player ou teste outra opção.";
+}
+
 export function HlsVideoPlayer({
   src,
   title,
@@ -54,6 +64,7 @@ export function HlsVideoPlayer({
 
     let disposed = false;
     let instance: import("hls.js").default | null = null;
+    let nativeFallbackAttempted = false;
     let mediaRecoveryAttempted = false;
     let networkRecoveryAttempted = false;
     let bufferingFallbackTimer: ReturnType<typeof setTimeout> | null = null;
@@ -120,6 +131,23 @@ export function HlsVideoPlayer({
       setMode("native");
       setStatus("ready");
       video.src = src;
+    };
+
+    const fallbackToNativeHls = () => {
+      if (!nativeHlsSupported || nativeFallbackAttempted || !isCurrent()) {
+        return false;
+      }
+
+      nativeFallbackAttempted = true;
+      clearBufferingFallbackTimer();
+      const activeHls = instance;
+      instance = null;
+      activeHls?.destroy();
+      video.removeAttribute("src");
+      video.load();
+      video.dataset.hlsNativeFallback = "true";
+      attachNativeHls();
+      return true;
     };
 
     const handleNativeError = () => {
@@ -214,6 +242,13 @@ export function HlsVideoPlayer({
             setFirstError((current) => current ?? kind);
 
             if (!error.fatal) {
+              return;
+            }
+
+            if (
+              error.type === Hls.ErrorTypes.NETWORK_ERROR &&
+              fallbackToNativeHls()
+            ) {
               return;
             }
 
@@ -325,7 +360,7 @@ export function HlsVideoPlayer({
         <p className="channel-player__hls-error" role="status">
           {status === "unsupported"
             ? "Este navegador não oferece suporte à reprodução HLS."
-            : "Não foi possível reproduzir esta transmissão. Atualize o player ou teste outra opção."}
+            : playbackErrorMessage(firstError)}
         </p>
       )}
     </>
