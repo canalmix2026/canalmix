@@ -5,8 +5,6 @@ import { usePathname } from "next/navigation";
 
 const ALLOWED_EXTERNAL_LINK_ATTRIBUTE = "data-canalmix-allow-external";
 const PLAYER_SURFACE_SELECTOR = ".channel-player, .tv-iptv, .public-game-schedule";
-const PLAYER_IFRAME_SELECTOR =
-  ".channel-player__frame, .public-game-row__youtube-frame";
 
 function resolveUrl(value: string, baseUrl: string) {
   try {
@@ -76,15 +74,6 @@ export function CanalMixPlayerProtection() {
       target,
       features,
     ) {
-      const activeElement = document.activeElement;
-
-      // Calls made while a provider's iframe is active remain under provider control.
-      if (
-        activeElement instanceof HTMLIFrameElement &&
-        activeElement.matches(PLAYER_IFRAME_SELECTOR)
-      ) {
-        return Reflect.apply(originalWindowOpen, this, [url, target, features]) as WindowProxy | null;
-      }
 
       if (
         explicitPopupAction &&

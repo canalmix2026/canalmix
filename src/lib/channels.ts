@@ -59,6 +59,21 @@ const fallbackCategories = CHANNEL_CATEGORIES.map(({ slug, name }) => ({
   name,
 }));
 
+// This provider was observed prompting viewers to leave the player in the supplied recording.
+// Keep it available to administrators, but do not load it in public channel or TV playback.
+const QUARANTINED_PUBLIC_PLAYER_HOSTS = ["thedaddy.li"];
+
+function isQuarantinedPublicPlayer(url: string) {
+  try {
+    const hostname = new URL(url).hostname.toLowerCase();
+    return QUARANTINED_PUBLIC_PLAYER_HOSTS.some(
+      (host) => hostname === host || hostname.endsWith("." + host),
+    );
+  } catch {
+    return false;
+  }
+}
+
 function mapChannels(
   channels: ChannelRow[],
   categories: CategoryRow[],
@@ -80,7 +95,9 @@ function mapChannels(
       }));
       const availableSources = includeHiddenSources
         ? sourcePairs
-        : sourcePairs.filter((source) => source.active);
+        : sourcePairs.filter(
+            (source) => source.active && !isQuarantinedPublicPlayer(source.url),
+          );
 
       return [
         {
