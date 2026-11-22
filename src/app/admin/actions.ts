@@ -743,7 +743,7 @@ export async function saveChannelAction(
 
   const sourceDraftSchema = z.object({
     id: z.string().uuid(),
-    isNew: z.boolean(),
+    isNew: z.boolean().optional(),
     type: z.enum(["direct-url", "iframe-url", "iframe-code"]),
     active: z.boolean(),
     url: z.string().max(2048),
@@ -751,7 +751,10 @@ export async function saveChannelAction(
   });
   const draftsResult = z.array(sourceDraftSchema).min(1).max(32).safeParse(submittedSources);
   if (!draftsResult.success) {
-    return { success: false, message: "Confira as opções de player e tente novamente." };
+    return {
+      success: false,
+      message: "Os dados das opções estão incompletos. Atualize a página do cadastro e tente novamente.",
+    };
   }
   const drafts = draftsResult.data;
   const seenIds = new Set<string>();
@@ -787,7 +790,7 @@ export async function saveChannelAction(
   const sources: ChannelEmbedSource[] = [];
   for (const draft of drafts) {
     const previous = existingById.get(draft.id);
-    if (existing && !previous && !draft.isNew) {
+    if (existing && !previous && draft.isNew === false) {
       return { success: false, message: "Uma opção enviada não pertence mais a este canal." };
     }
 
