@@ -8,7 +8,7 @@ import {
   type KeyboardEvent,
   type SyntheticEvent,
 } from "react";
-import { Flag, RotateCw } from "lucide-react";
+import { Flag, Maximize2, Minimize2, RotateCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { EmbedFrame } from "@/components/embed-frame";
 import { HlsVideoPlayer } from "@/components/hls-video-player";
@@ -87,6 +87,8 @@ export function ChannelPlayer({
   useVisitorPlaybackPresence(channelId, channelName, selectedOption + 1);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [fullscreenError, setFullscreenError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const attemptedVideoAutoplay = useRef(new WeakSet<HTMLVideoElement>());
@@ -101,8 +103,24 @@ export function ChannelPlayer({
   const isHls = isHlsSource(embedUrl);
   const isNativeVideo = isDirectSource && !isHls;
   const isYouTube = embedSource?.type === "iframe-url" && isYouTubeEmbed(embedUrl);
+  const canRequestFullscreen =
+    isDirectSource ||
+    embedSource?.type === "iframe-url" ||
+    (embedSource?.type === "iframe-code" &&
+      "src" in embedSource.content &&
+      embedSource.content.allowFullscreen);
   const syncMutedState = useCallback((muted: boolean) => {
     setIsMuted(muted);
+  }, []);
+
+  useEffect(() => {
+    const syncFullscreenState = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+
+    syncFullscreenState();
+    document.addEventListener("fullscreenchange", syncFullscreenState);
+    return () => document.removeEventListener("fullscreenchange", syncFullscreenState);
   }, []);
 
   const handleVideoVolumeChange = useCallback(
@@ -280,6 +298,26 @@ export function ChannelPlayer({
     setReportIdempotencyKey(window.crypto.randomUUID());
   }
 
+  async function toggleFullscreen() {
+    const target = iframeRef.current ?? videoRef.current;
+    setFullscreenError(null);
+
+    if (!target) {
+      setFullscreenError("A tela cheia não está disponível para esta opção.");
+      return;
+    }
+
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await target.requestFullscreen();
+      }
+    } catch {
+      setFullscreenError("O navegador bloqueou a tela cheia para esta opção.");
+    }
+  }
+
   function closeReportDialog() {
     setReportIdempotencyKey(null);
     requestAnimationFrame(() => {
@@ -367,6 +405,21 @@ export function ChannelPlayer({
           </div>
         )}
         <div className="channel-player__controls-actions">
+          {canRequestFullscreen && (
+            <button
+              aria-pressed={isFullscreen}
+              className="channel-player__fullscreen"
+              onClick={() => void toggleFullscreen()}
+              type="button"
+            >
+              {isFullscreen ? (
+                <Minimize2 aria-hidden="true" size={18} />
+              ) : (
+                <Maximize2 aria-hidden="true" size={18} />
+              )}
+              {isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
+            </button>
+          )}
           <button
             className="channel-player__refresh"
             onClick={refreshPlayer}
@@ -389,6 +442,11 @@ export function ChannelPlayer({
           </button>
         </div>
       </div>}
+      {fullscreenError && (
+        <p className="channel-player__fullscreen-error" role="status">
+          {fullscreenError}
+        </p>
+      )}
       {embedUrls.length === 0 ? (
         <p className="channel-player__unavailable" role="status">
           Nenhuma opção disponível

@@ -785,7 +785,8 @@ select:focus-visible {
 }
 
 .channel-player__refresh,
-.channel-player__report {
+.channel-player__report,
+.channel-player__fullscreen {
   min-height: 44px;
   padding: 0 14px;
   display: inline-flex;
@@ -800,13 +801,15 @@ select:focus-visible {
 }
 
 .channel-player__refresh:hover,
-.channel-player__report:hover {
+.channel-player__report:hover,
+.channel-player__fullscreen:hover {
   border-color: var(--aqua);
   color: var(--aqua);
 }
 
 .channel-player__refresh:focus-visible,
-.channel-player__report:focus-visible {
+.channel-player__report:focus-visible,
+.channel-player__fullscreen:focus-visible {
   outline: 3px solid var(--aqua);
   outline-offset: 3px;
 }
@@ -886,6 +889,14 @@ select:focus-visible {
   padding: 16px 20px;
   border-top: 1px solid rgba(195, 200, 226, 0.15);
   color: var(--muted);
+  font-size: 14px;
+}
+
+.channel-player__fullscreen-error {
+  margin: 0;
+  padding: 10px 16px;
+  color: #ffb9c1;
+  background: rgba(5, 6, 21, 0.92);
   font-size: 14px;
 }
 
