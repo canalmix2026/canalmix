@@ -31,8 +31,15 @@ type TransmissionOption =
   | { kind: "youtube"; broadcast: GameBroadcastData; embedUrl: string }
   | { kind: "channel"; broadcast: GameBroadcastData; channel: ChannelCardData };
 
-function focusKey(gameId: string, broadcastId?: string) {
-  return broadcastId ? `game-${gameId}-broadcast-${broadcastId}` : `game-${gameId}`;
+type BrazilianTransmissions =
+  | { kind: "available"; options: TransmissionOption[]; names: string[] }
+  | { kind: "names"; names: string[] }
+  | { kind: "unconfirmed"; names: string[] };
+
+function focusKey(gameId: string, broadcastId?: string, kind?: TransmissionOption["kind"]) {
+  return broadcastId
+    ? `game-${gameId}-broadcast-${broadcastId}${kind ? `-${kind}` : ""}`
+    : `game-${gameId}`;
 }
 
 function rememberTvFocus(mode: "site" | "tv", slug: string) {
@@ -63,36 +70,49 @@ function groupByBrasiliaDate(games: GameScheduleData[]) {
   return [...groups.entries()];
 }
 
-function getBrazilianTransmission(
+function getBrazilianTransmissions(
   game: GameScheduleData,
   publishedChannels: Map<string, ChannelCardData>,
-) {
+): BrazilianTransmissions {
   const broadcasts = game.broadcasts
     .filter((broadcast) => broadcast.countryCode.toUpperCase() === "BR")
     .sort((left, right) => left.sortOrder - right.sortOrder);
-  const available: TransmissionOption[] = broadcasts.flatMap<TransmissionOption>((broadcast): TransmissionOption[] => {
-    const embedUrl = normalizeYouTubeVideoUrl(broadcast.youtubeVideoUrl ?? "");
-    if (embedUrl) return [{ kind: "youtube" as const, broadcast, embedUrl }];
 
+  const options: TransmissionOption[] = [];
+  const names: string[] = [];
+  for (const broadcast of broadcasts) {
+    const embedUrl = normalizeYouTubeVideoUrl(broadcast.youtubeVideoUrl ?? "");
     const channel = broadcast.channelId
       ? publishedChannels.get(broadcast.channelId)
       : undefined;
-    return channel ? [{ kind: "channel" as const, broadcast, channel }] : [];
-  });
-  const selected = available.find(({ broadcast }) => broadcast.isPrimary) ?? available[0];
-  if (selected) return selected;
 
-  const names = [...new Map(
-    broadcasts.map((broadcast) => {
-      const name = /^premiere$/i.test(broadcast.broadcasterName.trim())
-        ? "Premiere — canal a confirmar"
-        : broadcast.broadcasterName.trim();
-      return [name.toLocaleLowerCase("pt-BR"), name];
-    }),
+    const broadcastOptions: TransmissionOption[] = [];
+    if (channel) broadcastOptions.push({ kind: "channel", broadcast, channel });
+    if (embedUrl) broadcastOptions.push({ kind: "youtube", broadcast, embedUrl });
+
+    if (broadcastOptions.length) {
+      options.push(...broadcastOptions);
+      continue;
+    }
+
+    const name = /^premiere$/i.test(broadcast.broadcasterName.trim())
+      ? "Premiere — canal a confirmar"
+      : broadcast.broadcasterName.trim();
+    if (name) names.push(name);
+  }
+
+  const uniqueNames = [...new Map(
+    names.map((name) => [name.toLocaleLowerCase("pt-BR"), name]),
   ).values()];
-  return names.length
-    ? { kind: "names" as const, names }
-    : { kind: "unconfirmed" as const, names: [] as string[] };
+  options.sort((left, right) =>
+    Number(right.broadcast.isPrimary) - Number(left.broadcast.isPrimary)
+    || left.broadcast.sortOrder - right.broadcast.sortOrder,
+  );
+
+  if (options.length) return { kind: "available", options, names: uniqueNames };
+  return uniqueNames.length
+    ? { kind: "names", names: uniqueNames }
+    : { kind: "unconfirmed", names: [] };
 }
 
 export function PublicGameSchedule({
@@ -188,18 +208,12 @@ export function PublicGameSchedule({
               </h3>
               <div className="public-game-schedule__list">
                 {dayGames.map((game) => {
-                  const transmission = getBrazilianTransmission(game, publishedChannels);
-                  const watchSlug = focusKey(
-                    game.id,
-                    transmission.kind === "channel" || transmission.kind === "youtube"
-                      ? transmission.broadcast.id
-                      : undefined,
-                  );
-                  const youtubePlayerOpen = transmission.kind === "youtube"
-                    && activeYoutubeBroadcastId === transmission.broadcast.id;
-                  const href = transmission.kind === "channel"
-                    ? `/canais/${encodeURIComponent(transmission.channel.slug)}?${mode === "tv" ? "from=tv&" : ""}voltar=historico&origem=schedule`
-                    : null;
+                  const transmission = getBrazilianTransmissions(game, publishedChannels);
+                  const activeYoutube = transmission.kind === "available"
+                    ? transmission.options.find((option): option is Extract<TransmissionOption, { kind: "youtube" }> =>
+                      option.kind === "youtube" && option.broadcast.id === activeYoutubeBroadcastId,
+                    )
+                    : undefined;
 
                   return (
                     <article className="public-game-row" id={`jogo-${game.id}`} key={game.id}>
@@ -208,51 +222,75 @@ export function PublicGameSchedule({
                       </time>
                       <div className="public-game-row__match">
                         <div className="public-game-row__teams">
-                          <TeamCrest shieldUrl={game.homeTeamShieldUrl} />
-                          <span className="public-game-row__team-name">{game.homeTeam}</span>
+                          <div className="public-game-row__team">
+                            <TeamCrest shieldUrl={game.homeTeamShieldUrl} />
+                            <span className="public-game-row__team-name">{game.homeTeam}</span>
+                          </div>
                           <span aria-hidden="true" className="public-game-row__versus">×</span>
-                          <TeamCrest shieldUrl={game.awayTeamShieldUrl} />
-                          <span className="public-game-row__team-name">{game.awayTeam}</span>
+                          <div className="public-game-row__team">
+                            <TeamCrest shieldUrl={game.awayTeamShieldUrl} />
+                            <span className="public-game-row__team-name">{game.awayTeam}</span>
+                          </div>
                         </div>
                         <span className="public-game-row__competition">{game.competitionName}</span>
                       </div>
-                      <div aria-label="Transmissão no Brasil" className="public-game-row__transmission">
-                        {transmission.kind === "channel" && href ? (
-                          <Link
-                            aria-label={`Assistir no ${transmission.channel.name}`}
-                            className="public-game-row__watch"
-                            data-catalog-card={mode === "tv" ? "" : undefined}
-                            data-list-section={mode === "tv" ? "schedule" : undefined}
-                            data-schedule-focus={watchSlug}
-                            data-slug={mode === "tv" ? watchSlug : undefined}
-                            data-tv-schedule-item={mode === "tv" ? "" : undefined}
-                            href={href}
-                            onClick={() => rememberTvFocus(mode, watchSlug)}
-                          >
-                            Assistir no {transmission.channel.name}
-                          </Link>
-                        ) : transmission.kind === "youtube" ? (
-                          <button
-                            aria-controls={`youtube-game-${game.id}`}
-                            aria-expanded={youtubePlayerOpen}
-                            className="public-game-row__watch"
-                            data-catalog-card={mode === "tv" ? "" : undefined}
-                            data-list-section={mode === "tv" ? "schedule" : undefined}
-                            data-schedule-focus={watchSlug}
-                            data-slug={mode === "tv" ? watchSlug : undefined}
-                            data-tv-schedule-item={mode === "tv" ? "" : undefined}
-                            onClick={() => setActiveYoutubeBroadcastId(youtubePlayerOpen ? null : transmission.broadcast.id)}
-                            type="button"
-                          >
-                            {youtubePlayerOpen ? "Fechar player" : `Assistir no ${transmission.broadcast.broadcasterName}`}
-                          </button>
+                      <div aria-label="Transmissões no Brasil" className="public-game-row__transmission" role="group">
+                        {transmission.kind === "available" ? (
+                          <>
+                            {transmission.options.map((option) => {
+                              const watchSlug = focusKey(game.id, option.broadcast.id, option.kind);
+
+                              if (option.kind === "channel") {
+                                const href = `/canais/${encodeURIComponent(option.channel.slug)}?${mode === "tv" ? "from=tv&" : ""}voltar=historico&origem=schedule`;
+                                return (
+                                  <Link
+                                    aria-label={`Assistir no ${option.channel.name}`}
+                                    className="public-game-row__watch"
+                                    data-catalog-card={mode === "tv" ? "" : undefined}
+                                    data-list-section={mode === "tv" ? "schedule" : undefined}
+                                    data-schedule-focus={watchSlug}
+                                    data-slug={mode === "tv" ? watchSlug : undefined}
+                                    data-tv-schedule-item={mode === "tv" ? "" : undefined}
+                                    href={href}
+                                    key={`${option.broadcast.id}-channel`}
+                                    onClick={() => rememberTvFocus(mode, watchSlug)}
+                                  >
+                                    Assistir no {option.channel.name}
+                                  </Link>
+                                );
+                              }
+
+                              const youtubePlayerOpen = activeYoutubeBroadcastId === option.broadcast.id;
+                              return (
+                                <button
+                                  aria-controls={`youtube-game-${game.id}`}
+                                  aria-expanded={youtubePlayerOpen}
+                                  aria-label={`Assistir no YouTube: ${option.broadcast.broadcasterName}`}
+                                  className="public-game-row__watch"
+                                  data-catalog-card={mode === "tv" ? "" : undefined}
+                                  data-list-section={mode === "tv" ? "schedule" : undefined}
+                                  data-schedule-focus={watchSlug}
+                                  data-slug={mode === "tv" ? watchSlug : undefined}
+                                  data-tv-schedule-item={mode === "tv" ? "" : undefined}
+                                  key={`${option.broadcast.id}-youtube`}
+                                  onClick={() => setActiveYoutubeBroadcastId(youtubePlayerOpen ? null : option.broadcast.id)}
+                                  type="button"
+                                >
+                                  {youtubePlayerOpen ? "Fechar player" : `Assistir no YouTube · ${option.broadcast.broadcasterName}`}
+                                </button>
+                              );
+                            })}
+                            {transmission.names.length > 0 && (
+                              <span className="public-game-row__broadcasters">{transmission.names.join(" · ")}</span>
+                            )}
+                          </>
                         ) : transmission.kind === "names" ? (
                           <span className="public-game-row__broadcasters">{transmission.names.join(" · ")}</span>
                         ) : (
                           <span className="public-game-row__unconfirmed">Transmissão a confirmar</span>
                         )}
                       </div>
-                      {transmission.kind === "youtube" && youtubePlayerOpen && (
+                      {activeYoutube?.kind === "youtube" && (
                         <div
                           aria-label={`Player do jogo ${game.homeTeam} x ${game.awayTeam}`}
                           className="public-game-row__youtube-player"
@@ -263,8 +301,8 @@ export function PublicGameSchedule({
                             className="public-game-row__youtube-frame"
                             loading="lazy"
                             referrerPolicy="strict-origin-when-cross-origin"
-                            src={transmission.embedUrl}
-                            title={`${transmission.broadcast.broadcasterName}: ${game.homeTeam} x ${game.awayTeam}`}
+                            src={activeYoutube.embedUrl}
+                            title={`YouTube ${activeYoutube.broadcast.broadcasterName}: ${game.homeTeam} x ${game.awayTeam}`}
                           />
                         </div>
                       )}

@@ -3676,11 +3676,21 @@ select:focus-visible {
 
 .public-game-row__teams {
   min-width: 0;
+  width: fit-content;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.public-game-row__team {
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 15px;
-  font-weight: 750;
 }
 
 .public-game-row__team-name {
@@ -3689,6 +3699,7 @@ select:focus-visible {
 }
 
 .public-game-row__versus {
+  align-self: center;
   padding: 0 2px;
   color: var(--aqua);
   font-weight: 800;
@@ -3725,11 +3736,14 @@ select:focus-visible {
 .public-game-row__transmission {
   min-width: 0;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-end;
   justify-content: flex-end;
+  gap: 8px;
 }
 
 .public-game-row__watch {
+  max-width: 100%;
   min-height: 38px;
   padding: 0 12px;
   display: inline-flex;
@@ -3741,6 +3755,7 @@ select:focus-visible {
   font-size: 12px;
   font-weight: 750;
   text-align: center;
+  overflow-wrap: anywhere;
 }
 
 .public-game-row__watch:hover,
@@ -3776,8 +3791,12 @@ select:focus-visible {
 }
 
 .public-game-schedule--tv .public-game-row__teams {
-  gap: 11px;
+  gap: 3px;
   font-size: 21px;
+}
+
+.public-game-schedule--tv .public-game-row__team {
+  gap: 11px;
 }
 
 .public-game-schedule--tv .team-crest {
@@ -3820,9 +3839,12 @@ select:focus-visible {
   }
 
   .public-game-row__teams {
-    flex-wrap: wrap;
-    gap: 6px;
+    gap: 2px;
     font-size: 14px;
+  }
+
+  .public-game-row__team {
+    gap: 6px;
   }
 
   .team-crest {
@@ -3833,6 +3855,7 @@ select:focus-visible {
 
   .public-game-row__transmission {
     grid-column: 2;
+    align-items: flex-start;
     justify-content: flex-start;
   }
 
@@ -3859,7 +3882,12 @@ select:focus-visible {
   }
 
   .public-game-schedule--tv .public-game-row__teams {
+    gap: 2px;
     font-size: 16px;
+  }
+
+  .public-game-schedule--tv .public-game-row__team {
+    gap: 8px;
   }
 
   .public-game-schedule--tv .public-game-row__watch {

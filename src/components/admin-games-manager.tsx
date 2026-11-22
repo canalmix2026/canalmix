@@ -535,7 +535,7 @@ function GameForm({
 
         <fieldset className="game-form__section">
           <legend>Transmissões</legend>
-          <p className="game-form__section-note">Digite qualquer emissora manualmente. O vínculo com o catálogo é opcional; um link do YouTube cria um player só para esta partida, sem cadastrar um canal.</p>
+          <p className="game-form__section-note">Cadastre uma opção por linha e use “Adicionar emissora” para incluir mais transmissões. Em cada linha, você pode escolher um canal do catálogo e também informar um link do YouTube; os dois aparecerão na grade. O player do YouTube fica vinculado somente a esta partida.</p>
           <div aria-hidden="true" className="game-form__broadcast-headings">
             <span>País</span>
             <span>Emissora anunciada</span>
