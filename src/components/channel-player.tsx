@@ -86,7 +86,9 @@ export function ChannelPlayer({
   const [selectedOption, setSelectedOption] = useState(0);
   useVisitorPlaybackPresence(channelId, channelName, selectedOption + 1);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(
+    embedSources[0]?.type === "direct-url",
+  );
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenError, setFullscreenError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -221,11 +223,15 @@ export function ChannelPlayer({
 
   function changeOption(nextOption: number) {
     videoRef.current?.pause();
+    setIsMuted(embedSources[nextOption]?.type === "direct-url");
     setSelectedOption(nextOption);
   }
 
   function refreshPlayer() {
     videoRef.current?.pause();
+    if (isDirectSource) {
+      setIsMuted(true);
+    }
     setRefreshKey((currentKey) => currentKey + 1);
   }
 
@@ -467,6 +473,7 @@ export function ChannelPlayer({
       ) : isDirectSource ? (
         <video
           aria-label={"Vídeo do canal " + channelName}
+          autoPlay
           className="channel-player__video"
           key={playerKey}
           muted={isMuted}

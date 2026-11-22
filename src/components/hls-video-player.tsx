@@ -378,6 +378,7 @@ export function HlsVideoPlayer({
     <>
       <video
         aria-label={title}
+        autoPlay
         className="channel-player__video"
         controls
         data-hls-first-error={failure?.code}
