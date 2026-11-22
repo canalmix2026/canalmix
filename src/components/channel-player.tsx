@@ -86,9 +86,8 @@ export function ChannelPlayer({
   const [selectedOption, setSelectedOption] = useState(0);
   useVisitorPlaybackPresence(channelId, channelName, selectedOption + 1);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [isMuted, setIsMuted] = useState(
-    embedSources[0]?.type === "direct-url",
-  );
+  const [isMuted, setIsMuted] = useState(false);
+  const [autoplayBlockedWithSound, setAutoplayBlockedWithSound] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenError, setFullscreenError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -132,6 +131,10 @@ export function ChannelPlayer({
     [syncMutedState],
   );
 
+  const handleVideoPlaying = useCallback(() => {
+    setAutoplayBlockedWithSound(false);
+  }, []);
+
   const attemptVideoAutoplay = useCallback(
     async (video: HTMLVideoElement) => {
       if (
@@ -143,14 +146,15 @@ export function ChannelPlayer({
 
       attemptedVideoAutoplay.current.add(video);
       video.removeAttribute("data-autoplay-error");
+      video.muted = false;
+      video.volume = 1;
       video.dataset.autoplayStatus = "attempting-unmuted";
+      setAutoplayBlockedWithSound(false);
 
       try {
         await video.play();
         if (video === videoRef.current) {
-          video.dataset.autoplayStatus = video.muted
-            ? "started-muted"
-            : "started-unmuted";
+          video.dataset.autoplayStatus = "started-unmuted";
         }
       } catch (error) {
         if (video !== videoRef.current) {
@@ -164,31 +168,11 @@ export function ChannelPlayer({
           return;
         }
 
-        if (video.muted) {
-          video.dataset.autoplayStatus = "blocked";
-          return;
-        }
-
-        video.dataset.autoplayStatus = "blocked-unmuted-retrying-muted";
-        video.muted = true;
-        syncMutedState(true);
-        try {
-          await video.play();
-          if (video === videoRef.current) {
-            video.dataset.autoplayStatus = "started-muted";
-          }
-        } catch (retryError) {
-          // Keep the native Play control available if muted autoplay is blocked too.
-          if (video === videoRef.current) {
-            video.dataset.autoplayError ??= getMediaErrorName(retryError);
-            video.dataset.autoplayStatus = isAutoplayBlockedError(retryError)
-              ? "blocked"
-              : `rejected:${getMediaErrorName(retryError)}`;
-          }
-        }
+        video.dataset.autoplayStatus = "blocked-unmuted";
+        setAutoplayBlockedWithSound(true);
       }
     },
-    [syncMutedState],
+    [],
   );
 
   const handleVideoCanPlay = useCallback(
@@ -223,15 +207,15 @@ export function ChannelPlayer({
 
   function changeOption(nextOption: number) {
     videoRef.current?.pause();
-    setIsMuted(embedSources[nextOption]?.type === "direct-url");
+    setIsMuted(false);
+    setAutoplayBlockedWithSound(false);
     setSelectedOption(nextOption);
   }
 
   function refreshPlayer() {
     videoRef.current?.pause();
-    if (isDirectSource) {
-      setIsMuted(true);
-    }
+    setIsMuted(false);
+    setAutoplayBlockedWithSound(false);
     setRefreshKey((currentKey) => currentKey + 1);
   }
 
@@ -468,6 +452,7 @@ export function ChannelPlayer({
           videoRef={videoRef}
           muted={isMuted}
           onCanPlay={handleVideoCanPlay}
+          onPlaying={handleVideoPlaying}
           onVolumeChange={handleVideoVolumeChange}
         />
       ) : isDirectSource ? (
@@ -477,6 +462,7 @@ export function ChannelPlayer({
           className="channel-player__video"
           key={playerKey}
           muted={isMuted}
+          onPlaying={handleVideoPlaying}
           onVolumeChange={handleVideoVolumeChange}
           playsInline
           preload="metadata"
@@ -532,6 +518,11 @@ export function ChannelPlayer({
           tvMode={tvMode}
           onClose={closeReportDialog}
         />
+      )}
+      {autoplayBlockedWithSound && (
+        <p className="channel-player__notice" role="status">
+          O navegador bloqueou o autoplay com som. Pressione Play para iniciar a transmissão.
+        </p>
       )}
       {embedUrls.length > 0 && <p className="channel-player__notice" role="status">
         {embedUrls.length === 0

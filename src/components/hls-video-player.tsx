@@ -26,6 +26,7 @@ export function HlsVideoPlayer({
   muted,
   videoRef,
   onCanPlay,
+  onPlaying,
   onVolumeChange,
 }: {
   src: string;
@@ -34,6 +35,7 @@ export function HlsVideoPlayer({
   muted: boolean;
   videoRef: RefObject<HTMLVideoElement | null>;
   onCanPlay(event: SyntheticEvent<HTMLVideoElement>): void;
+  onPlaying(): void;
   onVolumeChange(event: SyntheticEvent<HTMLVideoElement>): void;
 }) {
   const [mode, setMode] = useState<HlsPlaybackMode>("loading");
@@ -388,7 +390,10 @@ export function HlsVideoPlayer({
         data-hls-status={status}
         muted={muted}
         onCanPlay={onCanPlay}
-        onPlaying={() => setStatus("playing")}
+        onPlaying={() => {
+          setStatus("playing");
+          onPlaying();
+        }}
         onVolumeChange={onVolumeChange}
         playsInline
         preload="metadata"
