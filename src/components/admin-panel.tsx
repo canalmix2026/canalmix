@@ -51,6 +51,7 @@ function iframeCodeForUrl(url: string) {
 function newEmbedDraft(): ChannelEmbedSourceDraft {
   return {
     id: crypto.randomUUID(),
+    isNew: true,
     type: "iframe-url",
     active: true,
     url: "",

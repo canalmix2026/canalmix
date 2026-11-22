@@ -743,6 +743,7 @@ export async function saveChannelAction(
 
   const sourceDraftSchema = z.object({
     id: z.string().uuid(),
+    isNew: z.boolean(),
     type: z.enum(["direct-url", "iframe-url", "iframe-code"]),
     active: z.boolean(),
     url: z.string().max(2048),
@@ -786,7 +787,7 @@ export async function saveChannelAction(
   const sources: ChannelEmbedSource[] = [];
   for (const draft of drafts) {
     const previous = existingById.get(draft.id);
-    if (existing && !previous) {
+    if (existing && !previous && !draft.isNew) {
       return { success: false, message: "Uma opção enviada não pertence mais a este canal." };
     }
 

@@ -18,6 +18,7 @@ export type ChannelEmbedSource = {
 
 export type ChannelEmbedSourceDraft = {
   id: string;
+  isNew: boolean;
   type: EmbedSourceType;
   active: boolean;
   url: string;
@@ -69,6 +70,7 @@ export function toChannelEmbedSourceDraft(
 
   return {
     id: source.id,
+    isNew: false,
     type: source.type,
     active: source.active,
     url,
