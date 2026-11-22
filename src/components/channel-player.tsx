@@ -16,26 +16,7 @@ import { YouTubeEmbedFrame } from "@/components/youtube-embed-frame";
 import { ReportStreamIssueDialog } from "@/components/report-stream-issue-dialog";
 import { useVisitorPlaybackPresence } from "@/components/visitor-presence-provider";
 import type { EmbedReferrerPolicy } from "@/lib/embed-provider-policy-core";
-
-function getNativeVideoMimeType(src: string) {
-  try {
-    const extension = new URL(src).pathname.split(".").pop()?.toLowerCase();
-    switch (extension) {
-      case "mp4":
-      case "m4v":
-        return "video/mp4";
-      case "webm":
-        return "video/webm";
-      case "ogv":
-      case "ogg":
-        return "video/ogg";
-      default:
-        return null;
-    }
-  } catch {
-    return null;
-  }
-}
+import type { ChannelEmbedSource } from "@/lib/channel-embed-sources";
 
 function isYouTubeEmbed(src: string) {
   try {
@@ -83,7 +64,9 @@ function getMediaErrorName(error: unknown) {
 export function ChannelPlayer({
   channelId,
   channelName,
+  officialUrl,
   embedUrls,
+  embedSources,
   embedSourceIds,
   referrerPolicies,
   tvMode = false,
@@ -91,7 +74,9 @@ export function ChannelPlayer({
 }: {
   channelId: string;
   channelName: string;
+  officialUrl?: string | null;
   embedUrls: string[];
+  embedSources: ChannelEmbedSource[];
   embedSourceIds: string[];
   referrerPolicies: EmbedReferrerPolicy[];
   tvMode?: boolean;
@@ -110,11 +95,12 @@ export function ChannelPlayer({
   const reportButton = useRef<HTMLButtonElement | null>(null);
   const [reportIdempotencyKey, setReportIdempotencyKey] = useState<string | null>(null);
   const embedUrl = embedUrls[selectedOption] ?? embedUrls[0] ?? "";
-  const playerKey = channelId + ":" + selectedOption + ":" + refreshKey;
-  const nativeVideoMimeType = getNativeVideoMimeType(embedUrl);
-  const isNativeVideo = nativeVideoMimeType !== null;
+  const embedSource = embedSources[selectedOption] ?? embedSources[0];
+  const playerKey = channelId + ":" + (embedSource?.id ?? selectedOption) + ":" + refreshKey;
+  const isDirectSource = embedSource?.type === "direct-url";
   const isHls = isHlsSource(embedUrl);
-  const isYouTube = isYouTubeEmbed(embedUrl);
+  const isNativeVideo = isDirectSource && !isHls;
+  const isYouTube = embedSource?.type === "iframe-url" && isYouTubeEmbed(embedUrl);
   const syncMutedState = useCallback((muted: boolean) => {
     setIsMuted(muted);
   }, []);
@@ -409,17 +395,18 @@ export function ChannelPlayer({
         </p>
       ) : (
         <div className="channel-player__stage">
-          {isHls ? (
+          {isDirectSource && isHls ? (
         <HlsVideoPlayer
           key={playerKey}
           src={embedUrl}
           title={"Player do canal " + channelName}
+          officialUrl={officialUrl}
           videoRef={videoRef}
           muted={isMuted}
           onCanPlay={handleVideoCanPlay}
           onVolumeChange={handleVideoVolumeChange}
         />
-      ) : isNativeVideo ? (
+      ) : isDirectSource ? (
         <video
           aria-label={"Vídeo do canal " + channelName}
           className="channel-player__video"
@@ -450,8 +437,22 @@ export function ChannelPlayer({
           className="channel-player__frame"
           frameRef={iframeRef}
           src={embedUrl}
-          title={"Player do canal " + channelName}
+          title={
+            embedSource?.type === "iframe-code" && "src" in embedSource.content
+              ? embedSource.content.title || "Player do canal " + channelName
+              : "Player do canal " + channelName
+          }
           referrerPolicy={referrerPolicies[selectedOption]}
+          allow={
+            embedSource?.type === "iframe-code" && "src" in embedSource.content
+              ? embedSource.content.allow ?? ""
+              : undefined
+          }
+          allowFullScreen={
+            embedSource?.type === "iframe-code" && "src" in embedSource.content
+              ? embedSource.content.allowFullscreen ?? false
+              : undefined
+          }
         />
           )}
         </div>

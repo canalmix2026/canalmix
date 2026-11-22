@@ -18,6 +18,7 @@ import {
   type EmbedReferrerPolicy,
 } from "@/lib/embed-provider-policy-core";
 import { getTvRemoteKey } from "@/lib/tv-remote";
+import { getChannelEmbedSourceUrl, type ChannelEmbedSource } from "@/lib/channel-embed-sources";
 
 type TvIptvProps = {
   channels: ChannelCardData[];
@@ -30,6 +31,7 @@ type TvIptvOption = {
   key: string;
   channel: ChannelCardData;
   sourceId: string;
+  source: ChannelEmbedSource;
   url: string;
   optionNumber: number;
   referrerPolicy: EmbedReferrerPolicy;
@@ -142,21 +144,17 @@ export function TvIptvInterface({
     const result: TvIptvOption[] = [];
 
     for (const channel of channels) {
-      const seenUrls = new Set<string>();
-      let optionNumber = 0;
-
-      channel.embedUrls.forEach((rawUrl, index) => {
-        const url = rawUrl.trim();
-        if (!url || seenUrls.has(url)) return;
-        seenUrls.add(url);
-        optionNumber += 1;
-
-        const sourceId = channel.embedSourceIds[index] ?? "";
+      channel.embedSources.forEach((source, index) => {
+        const url = getChannelEmbedSourceUrl(source).trim();
+        if (!url) return;
+        const optionNumber = index + 1;
+        const sourceId = source.id;
         const fallbackPolicy = DEFAULT_EMBED_REFERRER_POLICY;
         result.push({
           key: `${channel.id}:${sourceId || "source"}:${index}`,
           channel,
           sourceId,
+          source,
           url,
           optionNumber,
           referrerPolicy:
@@ -185,10 +183,13 @@ export function TvIptvInterface({
     view.kind === "options"
       ? categories.find((category) => category.slug === view.categorySlug) ?? null
       : null;
-  const visibleOptions =
-    view.kind === "options"
-      ? optionsByCategory.get(view.categorySlug) ?? []
-      : [];
+  const visibleOptions = useMemo(
+    () =>
+      view.kind === "options"
+        ? optionsByCategory.get(view.categorySlug) ?? []
+        : [],
+    [optionsByCategory, view],
+  );
 
   const focusListItem = useCallback((item: HTMLElement | null) => {
     if (!item) return;
@@ -579,10 +580,7 @@ export function TvIptvInterface({
                       }
                       data-tv-iptv-key={`category:${category.slug}`}
                       data-tv-iptv-item
-                      autoFocus={
-                        category.slug ===
-                        (lastCategorySlugRef.current ?? categories[0]?.slug)
-                      }
+                      autoFocus={focusedItemKey === `category:${category.slug}`}
                       key={category.slug}
                       onClick={() => openCategory(category.slug)}
                       onFocus={() =>
@@ -681,7 +679,9 @@ export function TvIptvInterface({
                   key={activeOption.key}
                   channelId={activeOption.channel.id}
                   channelName={activeOption.channel.name}
+                  officialUrl={activeOption.channel.officialUrl}
                   embedUrls={[activeOption.url]}
+                  embedSources={[activeOption.source]}
                   embedSourceIds={[activeOption.sourceId]}
                   referrerPolicies={[activeOption.referrerPolicy]}
                 />

@@ -3,6 +3,8 @@ import type { IframeHTMLAttributes, Ref } from "react";
 type EmbedFrameProps = {
   src: string;
   title: string;
+  allow?: string;
+  allowFullScreen?: boolean;
   frameRef?: Ref<HTMLIFrameElement>;
 } & Omit<
   IframeHTMLAttributes<HTMLIFrameElement>,
@@ -12,6 +14,8 @@ type EmbedFrameProps = {
 export function EmbedFrame({
   src,
   title,
+  allow = "autoplay; encrypted-media; picture-in-picture; fullscreen",
+  allowFullScreen = true,
   frameRef,
   ...attributes
 }: EmbedFrameProps) {
@@ -22,8 +26,8 @@ export function EmbedFrame({
     <iframe
       ref={frameRef}
       {...safeAttributes}
-      allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-      allowFullScreen
+      allow={allow}
+      allowFullScreen={allowFullScreen}
       src={src}
       title={title}
     />

@@ -1,14 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import {
-  channelInputSchema,
+  channelProfileInputSchema,
+  isSafeHttpUrl,
   isSafeHttpsUrl,
+  normalizeSafeHttpUrl,
   slugifyChannelName,
 } from "@/lib/channel-schema";
-import { extractEmbedIframeSrc } from "@/lib/embed-code";
+import { parseEmbedIframeCode } from "@/lib/embed-code";
+import type { ChannelEmbedSource } from "@/lib/channel-embed-sources";
+import { getChannelEmbedSourceUrl } from "@/lib/channel-embed-sources";
 import { getProviderEmbedReferrerPolicy } from "@/lib/embed-provider-policy.server";
 import type { EmbedReferrerPolicy } from "@/lib/embed-provider-policy-core";
 import { redirect } from "next/navigation";
@@ -155,10 +158,10 @@ export async function getAdminEmbedPreviewPolicyAction(
     return { success: false, message: "Acesso administrativo necessário." };
   }
 
-  if (!isSafeHttpsUrl(embedUrl)) {
+  if (!isSafeHttpUrl(embedUrl)) {
     return {
       success: false,
-      message: "Use uma URL HTTPS válida, sem usuário ou senha.",
+      message: "Use uma URL HTTP ou HTTPS válida, sem usuário ou senha.",
     };
   }
 
@@ -187,44 +190,36 @@ export async function updateChannelSourceAction(
 
   const { data: channel, error: readError } = await admin.supabase
     .from("channels")
-    .select("slug, embed_urls, embed_source_ids, embed_source_active")
+    .select("slug, embed_sources")
     .eq("id", channelId)
     .maybeSingle();
   if (readError || !channel) {
     return { success: false, message: "O canal não foi encontrado." };
   }
 
-  const sourceIndex = channel.embed_source_ids.indexOf(sourceId);
-  if (
-    sourceIndex < 0 ||
-    channel.embed_urls.length !== channel.embed_source_ids.length ||
-    channel.embed_urls.length !== channel.embed_source_active.length
-  ) {
+  const sources = channel.embed_sources as unknown as ChannelEmbedSource[];
+  const sourceIndex = sources.findIndex((source) => source.id === sourceId);
+  if (sourceIndex < 0) {
     return { success: false, message: "Esta fonte não pertence mais ao canal." };
   }
 
-  const nextUrls = [...channel.embed_urls];
-  const nextIds = [...channel.embed_source_ids];
-  const nextActive = [...channel.embed_source_active];
+  const nextSources = [...sources];
   if (operation === "move-up" || operation === "move-down") {
     const nextIndex = sourceIndex + (operation === "move-up" ? -1 : 1);
-    if (nextIndex < 0 || nextIndex >= nextIds.length) {
+    if (nextIndex < 0 || nextIndex >= nextSources.length) {
       return { success: false, message: "A fonte já está no limite dessa ordem." };
     }
-    [nextUrls[sourceIndex], nextUrls[nextIndex]] = [nextUrls[nextIndex], nextUrls[sourceIndex]];
-    [nextIds[sourceIndex], nextIds[nextIndex]] = [nextIds[nextIndex], nextIds[sourceIndex]];
-    [nextActive[sourceIndex], nextActive[nextIndex]] = [nextActive[nextIndex], nextActive[sourceIndex]];
+    [nextSources[sourceIndex], nextSources[nextIndex]] = [nextSources[nextIndex], nextSources[sourceIndex]];
   } else {
-    nextActive[sourceIndex] = operation === "reactivate";
+    nextSources[sourceIndex] = {
+      ...nextSources[sourceIndex],
+      active: operation === "reactivate",
+    };
   }
 
   const { error: updateError } = await admin.supabase
     .from("channels")
-    .update({
-      embed_urls: nextUrls,
-      embed_source_ids: nextIds,
-      embed_source_active: nextActive,
-    })
+    .update({ embed_sources: nextSources as never })
     .eq("id", channelId);
   if (updateError) {
     console.error("Falha ao atualizar fonte do canal:", updateError.message);
@@ -577,7 +572,7 @@ export async function saveTeamAction(input: unknown): Promise<AdminActionResult>
   const team = parsed.data;
   const shieldUrl = team.shieldUrl.trim() || null;
   if (shieldUrl && !isSafeShieldUrl(shieldUrl)) {
-    return { success: false, message: "Use uma URL HTTPS ou um caminho local seguro para o escudo." };
+    return { success: false, message: "Use uma URL HTTP ou HTTPS ou um caminho local seguro para o escudo." };
   }
 
   let existing: {
@@ -713,25 +708,6 @@ export async function setGamePublishedAction(
   return { success: true, message: published ? "Jogo publicado." : "Jogo despublicado." };
 }
 
-function keepSourceIdsForMatchingUrls(
-  nextUrls: string[],
-  currentUrls: string[],
-  currentIds: string[],
-) {
-  const idsByUrl = new Map<string, string[]>();
-  currentUrls.forEach((url, index) => {
-    const id = currentIds[index];
-    if (!id) {
-      return;
-    }
-    const matchingIds = idsByUrl.get(url) ?? [];
-    matchingIds.push(id);
-    idsByUrl.set(url, matchingIds);
-  });
-
-  return nextUrls.map((url) => idsByUrl.get(url)?.shift() ?? randomUUID());
-}
-
 export async function saveChannelAction(
   formData: FormData,
 ): Promise<AdminActionResult> {
@@ -740,44 +716,13 @@ export async function saveChannelAction(
     return { success: false, message: "Acesso administrativo necessário." };
   }
 
-  const submittedMode = formData.get("embedMode");
-  if (
-    submittedMode !== null &&
-    submittedMode !== "url" &&
-    submittedMode !== "code"
-  ) {
-    return { success: false, message: "Selecione um modo de embed válido." };
-  }
-
-  const embedMode = submittedMode ?? "url";
-  const rawEmbedValues = formData.getAll(
-    embedMode === "code" ? "embedCodes" : "embedUrls",
-  );
-  const embedUrls = embedMode === "code"
-    ? rawEmbedValues.map((value) =>
-        typeof value === "string" ? extractEmbedIframeSrc(value) : null,
-      )
-    : rawEmbedValues;
-
-  if (
-    embedMode === "code" &&
-    (embedUrls.length === 0 || embedUrls.some((url) => url === null))
-  ) {
-    return {
-      success: false,
-      message: "Cole um único iframe com src HTTPS válido em cada opção.",
-    };
-  }
-
-  const parsed = channelInputSchema.safeParse({
+  const parsed = channelProfileInputSchema.safeParse({
     name: formData.get("name"),
     categorySlug: formData.get("categorySlug"),
-    embedUrls,
     thumbnailUrl: formData.get("thumbnailUrl"),
     officialUrl: formData.get("officialUrl"),
     published: formData.get("published") === "true",
   });
-
   if (!parsed.success) {
     return {
       success: false,
@@ -785,73 +730,128 @@ export async function saveChannelAction(
     };
   }
 
-  const input = parsed.data;
-  const rawActiveValues = formData.getAll("embedSourceActive");
-  let submittedActive: boolean[] | null = null;
-  if (rawActiveValues.length > 0) {
-    if (
-      rawActiveValues.length !== input.embedUrls.length ||
-      rawActiveValues.some((value) => value !== "true" && value !== "false")
-    ) {
-      return { success: false, message: "A visibilidade das opções é inválida." };
-    }
-    submittedActive = rawActiveValues.map((value) => value === "true");
+  const rawSources = formData.get("embedSources");
+  if (typeof rawSources !== "string" || rawSources.length > 500_000) {
+    return { success: false, message: "Adicione opções de player válidas." };
+  }
+  let submittedSources: unknown;
+  try {
+    submittedSources = JSON.parse(rawSources);
+  } catch {
+    return { success: false, message: "Os dados das opções são inválidos." };
   }
 
+  const sourceDraftSchema = z.object({
+    id: z.string().uuid(),
+    type: z.enum(["direct-url", "iframe-url", "iframe-code"]),
+    active: z.boolean(),
+    url: z.string().max(2048),
+    iframeCode: z.string().max(10_000),
+  });
+  const draftsResult = z.array(sourceDraftSchema).min(1).max(32).safeParse(submittedSources);
+  if (!draftsResult.success) {
+    return { success: false, message: "Confira as opções de player e tente novamente." };
+  }
+  const drafts = draftsResult.data;
+  const seenIds = new Set<string>();
+  for (const draft of drafts) {
+    if (seenIds.has(draft.id)) {
+      return { success: false, message: "Cada opção precisa ter um identificador único." };
+    }
+    seenIds.add(draft.id);
+  }
+
+  const channelId = String(formData.get("id") ?? "").trim();
+  let existing: {
+    id: string;
+    slug: string;
+    is_published: boolean;
+    published_at: string | null;
+    embed_sources: unknown;
+  } | null = null;
+  if (channelId) {
+    const { data, error } = await admin.supabase
+      .from("channels")
+      .select("id, slug, is_published, published_at, embed_sources")
+      .eq("id", channelId)
+      .maybeSingle();
+    if (error || !data) {
+      return { success: false, message: "O canal não foi encontrado." };
+    }
+    existing = data;
+  }
+
+  const existingSources = (existing?.embed_sources ?? []) as ChannelEmbedSource[];
+  const existingById = new Map(existingSources.map((source) => [source.id, source]));
+  const sources: ChannelEmbedSource[] = [];
+  for (const draft of drafts) {
+    const previous = existingById.get(draft.id);
+    if (existing && !previous) {
+      return { success: false, message: "Uma opção enviada não pertence mais a este canal." };
+    }
+
+    let content: ChannelEmbedSource["content"];
+    if (draft.type === "iframe-code") {
+      const iframe = parseEmbedIframeCode(draft.iframeCode);
+      if (!iframe) {
+        return {
+          success: false,
+          message: `O iframe da opção ${sources.length + 1} é inválido. Use somente src, title, allow e allowfullscreen, com src HTTP ou HTTPS.`,
+        };
+      }
+      content = {
+        src: iframe.src,
+        ...(iframe.title ? { title: iframe.title } : {}),
+        ...(iframe.allow ? { allow: iframe.allow } : {}),
+        ...(iframe.allowFullscreen ? { allowFullscreen: true } : {}),
+      };
+    } else {
+      const url = normalizeSafeHttpUrl(draft.url);
+      if (!url) {
+        return {
+          success: false,
+          message: `Informe uma URL HTTP ou HTTPS válida na opção ${sources.length + 1}, sem usuário ou senha.`,
+        };
+      }
+      content = { url };
+    }
+
+    const unchanged = previous && previous.type === draft.type &&
+      JSON.stringify(previous.content) === JSON.stringify(content);
+    sources.push({
+      id: draft.id,
+      type: draft.type,
+      content: unchanged ? previous.content : content,
+      active: previous?.active ?? draft.active,
+    });
+  }
+
+  const input = parsed.data;
   const categoryId = await findCategoryId(admin.supabase, input.categorySlug);
   if (!categoryId) {
     return { success: false, message: "Selecione uma categoria válida." };
   }
 
-  const id = String(formData.get("id") ?? "").trim();
-  if (id) {
-    const { data: existing, error: existingError } = await admin.supabase
-      .from("channels")
-      .select("id, slug, is_published, published_at, embed_urls, embed_source_ids, embed_source_active")
-      .eq("id", id)
-      .maybeSingle();
-
-    if (existingError || !existing) {
-      return { success: false, message: "O canal não foi encontrado." };
-    }
-
+  if (existing) {
     const publishedAt = input.published
       ? existing.published_at ?? new Date().toISOString()
       : existing.published_at;
-    const sourceIds = keepSourceIdsForMatchingUrls(
-      input.embedUrls,
-      existing.embed_urls,
-      existing.embed_source_ids,
-    );
-    const activeBySourceId = new Map(
-      existing.embed_source_ids.map((sourceId, index) => [
-        sourceId,
-        existing.embed_source_active[index] ?? true,
-      ]),
-    );
-    const sourceActive = submittedActive ?? sourceIds.map(
-      (sourceId) => activeBySourceId.get(sourceId) ?? true,
-    );
     const { error } = await admin.supabase
       .from("channels")
       .update({
         name: input.name,
         category_id: categoryId,
-        embed_urls: input.embedUrls,
-        embed_source_ids: sourceIds,
-        embed_source_active: sourceActive,
+        embed_sources: sources as never,
         thumbnail_url: input.thumbnailUrl,
         official_url: input.officialUrl,
         is_published: input.published,
         published_at: publishedAt,
       })
       .eq("id", existing.id);
-
     if (error) {
       console.error("Falha ao atualizar canal:", error.message);
       return { success: false, message: "Não foi possível salvar as alterações." };
     }
-
     revalidateCatalog(existing.slug);
     return { success: true, message: "Canal atualizado." };
   }
@@ -867,9 +867,8 @@ export async function saveChannelAction(
       slug,
       name: input.name,
       category_id: categoryId,
-      embed_urls: input.embedUrls,
-      embed_source_ids: input.embedUrls.map(() => randomUUID()),
-      embed_source_active: submittedActive ?? input.embedUrls.map(() => true),
+      embed_sources: sources as never,
+      embed_urls: sources.map(getChannelEmbedSourceUrl),
       thumbnail_url: input.thumbnailUrl,
       official_url: input.officialUrl,
       is_published: input.published,
@@ -878,16 +877,16 @@ export async function saveChannelAction(
     })
     .select("id, slug")
     .single();
-
   if (error || !data) {
     console.error("Falha ao criar canal:", error?.message);
     return { success: false, message: "Não foi possível cadastrar o canal." };
   }
-
   revalidateCatalog(data.slug);
-  return { success: true, message: "Canal cadastrado como " + (input.published ? "publicado." : "oculto.") };
+  return {
+    success: true,
+    message: "Canal cadastrado como " + (input.published ? "publicado." : "oculto."),
+  };
 }
-
 export async function setChannelPublishedAction(
   id: string,
   published: boolean,

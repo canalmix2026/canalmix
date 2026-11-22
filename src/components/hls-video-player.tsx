@@ -1,45 +1,28 @@
 "use client";
 
 import { useEffect, useState, type RefObject, type SyntheticEvent } from "react";
-import type { ErrorData } from "hls.js";
 import {
   getHighestBitrateLevelIndex,
   GLOBAL_VIDEO_QUALITY_POLICY,
   requestAdaptiveFallback,
 } from "@/lib/video-quality-policy";
+import {
+  getHlsNetworkMetadata,
+  getHlsPlaybackErrorMessage,
+  getHlsPlaybackFailure,
+  getSafeHostname,
+  type HlsPlaybackFailure,
+} from "@/lib/hls-playback-diagnostics";
 
 const HLS_MIME_TYPE = "application/vnd.apple.mpegurl";
 
 type HlsPlaybackMode = "loading" | "native" | "hls.js" | "unsupported";
 type HlsPlaybackStatus = "loading" | "ready" | "playing" | "error" | "unsupported";
 
-function errorKind(error: ErrorData, hls: typeof import("hls.js").default) {
-  const status = error.response?.code;
-  if (status) {
-    return `http-${status}`;
-  }
-  if (error.type === hls.ErrorTypes.NETWORK_ERROR) {
-    return `network:${error.details}`;
-  }
-  if (error.type === hls.ErrorTypes.MEDIA_ERROR) {
-    return `media:${error.details}`;
-  }
-  return `hls:${error.details}`;
-}
-
-function playbackErrorMessage(error: string | null) {
-  if (error?.startsWith("http-403")) {
-    return "A fonte recusou a reprodução incorporada neste domínio (HTTP 403). O provedor precisa liberar o player do CanalMix.";
-  }
-  if (error?.startsWith("network:")) {
-    return "A fonte HLS não pode ser carregada neste domínio (rede/CORS). Teste outra opção ou use um player autorizado.";
-  }
-  return "Não foi possível reproduzir esta transmissão. Atualize o player ou teste outra opção.";
-}
-
 export function HlsVideoPlayer({
   src,
   title,
+  officialUrl,
   muted,
   videoRef,
   onCanPlay,
@@ -47,6 +30,7 @@ export function HlsVideoPlayer({
 }: {
   src: string;
   title: string;
+  officialUrl?: string | null;
   muted: boolean;
   videoRef: RefObject<HTMLVideoElement | null>;
   onCanPlay(event: SyntheticEvent<HTMLVideoElement>): void;
@@ -54,7 +38,7 @@ export function HlsVideoPlayer({
 }) {
   const [mode, setMode] = useState<HlsPlaybackMode>("loading");
   const [status, setStatus] = useState<HlsPlaybackStatus>("loading");
-  const [firstError, setFirstError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<HlsPlaybackFailure | null>(null);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -62,14 +46,18 @@ export function HlsVideoPlayer({
       return;
     }
 
+    setMode("loading");
+    setStatus("loading");
+    setFailure(null);
+
     let disposed = false;
     let instance: import("hls.js").default | null = null;
-    let nativeFallbackAttempted = false;
     let mediaRecoveryAttempted = false;
     let networkRecoveryAttempted = false;
     let bufferingFallbackTimer: ReturnType<typeof setTimeout> | null = null;
     let lastBufferingFallbackAt = 0;
     let lastMainFragmentLevel = -1;
+    const reportedResources = new Set<string>();
     const isCurrent = () => !disposed && videoRef.current === video;
 
     const clearBufferingFallbackTimer = () => {
@@ -77,6 +65,23 @@ export function HlsVideoPlayer({
         clearTimeout(bufferingFallbackTimer);
         bufferingFallbackTimer = null;
       }
+    };
+
+    const reportLoadedResource = (
+      resource: string,
+      key: string,
+      networkDetails: unknown,
+      fallbackUrl?: string,
+    ) => {
+      if (reportedResources.has(key)) return;
+      reportedResources.add(key);
+      const metadata = getHlsNetworkMetadata(networkDetails, fallbackUrl);
+      console.info("[CanalMix HLS]", {
+        event: "resource-loaded",
+        resource,
+        status: metadata.status,
+        host: metadata.host ?? getSafeHostname(src),
+      });
     };
 
     const scheduleAdaptiveFallback = () => {
@@ -121,8 +126,6 @@ export function HlsVideoPlayer({
     const handleBuffering = () => scheduleAdaptiveFallback();
     const handlePlaybackResumed = () => clearBufferingFallbackTimer();
     const nativeHlsSupported = video.canPlayType(HLS_MIME_TYPE) !== "";
-    const preferNative =
-      nativeHlsSupported && "ManagedMediaSource" in window;
 
     const attachNativeHls = () => {
       if (!isCurrent()) {
@@ -133,29 +136,19 @@ export function HlsVideoPlayer({
       video.src = src;
     };
 
-    const fallbackToNativeHls = () => {
-      if (!nativeHlsSupported || nativeFallbackAttempted || !isCurrent()) {
-        return false;
-      }
-
-      nativeFallbackAttempted = true;
-      clearBufferingFallbackTimer();
-      const activeHls = instance;
-      instance = null;
-      activeHls?.destroy();
-      video.removeAttribute("src");
-      video.load();
-      video.dataset.hlsNativeFallback = "true";
-      attachNativeHls();
-      return true;
-    };
-
     const handleNativeError = () => {
       if (!isCurrent() || !video.error) {
         return;
       }
-      const errorCode = `media-element-${video.error.code}`;
-      setFirstError((current) => current ?? errorCode);
+      const nativeCode = video.error.code;
+      const nativeFailure: HlsPlaybackFailure = {
+        code: `media-element-${nativeCode}`,
+        kind: nativeCode === 2 ? "network" : "media",
+        stage: "transmissão HLS",
+        status: null,
+        host: getSafeHostname(src),
+      };
+      setFailure((current) => current ?? nativeFailure);
       setStatus("error");
     };
 
@@ -174,11 +167,6 @@ export function HlsVideoPlayer({
       video.removeAttribute("src");
       video.load();
     };
-
-    if (preferNative) {
-      attachNativeHls();
-      return cleanup;
-    }
 
     void import("hls.js")
       .then(({ default: Hls }) => {
@@ -233,24 +221,59 @@ export function HlsVideoPlayer({
             }
           });
 
+          hls.on(Hls.Events.MANIFEST_LOADED, (_event, data) => {
+            if (!isCurrent()) return;
+            reportLoadedResource("manifest", "manifest", data.networkDetails, data.url);
+          });
+
+          hls.on(Hls.Events.LEVEL_LOADED, (_event, data) => {
+            if (!isCurrent()) return;
+            reportLoadedResource(
+              "quality-playlist",
+              `quality-${data.level}`,
+              data.networkDetails,
+            );
+          });
+
+          hls.on(Hls.Events.AUDIO_TRACK_LOADED, (_event, data) => {
+            if (!isCurrent()) return;
+            reportLoadedResource(
+              "audio-playlist",
+              `audio-${data.id}`,
+              data.networkDetails,
+            );
+          });
+
+          hls.on(Hls.Events.FRAG_LOADED, (_event, data) => {
+            if (!isCurrent() || data.frag.type !== "main") return;
+            reportLoadedResource(
+              "video-segment",
+              "first-video-segment",
+              data.networkDetails,
+              data.frag.url,
+            );
+          });
+
           hls.on(Hls.Events.ERROR, (_event, error) => {
             if (!isCurrent()) {
               return;
             }
 
-            const kind = errorKind(error, Hls);
-            setFirstError((current) => current ?? kind);
+            const hlsFailure = getHlsPlaybackFailure(error);
+            setFailure((current) => current ?? hlsFailure);
 
             if (!error.fatal) {
               return;
             }
 
-            if (
-              error.type === Hls.ErrorTypes.NETWORK_ERROR &&
-              fallbackToNativeHls()
-            ) {
-              return;
-            }
+            console.warn("[CanalMix HLS]", {
+              event: "playback-error",
+              sourceHost: getSafeHostname(src),
+              responseHost: hlsFailure.host,
+              status: hlsFailure.status,
+              stage: hlsFailure.stage,
+              detail: error.details,
+            });
 
             if (
               error.type === Hls.ErrorTypes.MEDIA_ERROR &&
@@ -321,7 +344,13 @@ export function HlsVideoPlayer({
 
         setMode("unsupported");
         setStatus("unsupported");
-        setFirstError((current) => current ?? "hls-unsupported");
+        setFailure((current) => current ?? {
+          code: "hls-unsupported",
+          kind: "other",
+          stage: "transmissão HLS",
+          status: null,
+          host: getSafeHostname(src),
+        });
       })
       .catch(() => {
         if (!isCurrent()) {
@@ -333,7 +362,13 @@ export function HlsVideoPlayer({
         }
         setMode("unsupported");
         setStatus("unsupported");
-        setFirstError((current) => current ?? "hls-library-unavailable");
+        setFailure((current) => current ?? {
+          code: "hls-library-unavailable",
+          kind: "other",
+          stage: "transmissão HLS",
+          status: null,
+          host: getSafeHostname(src),
+        });
       });
 
     return cleanup;
@@ -345,7 +380,9 @@ export function HlsVideoPlayer({
         aria-label={title}
         className="channel-player__video"
         controls
-        data-hls-first-error={firstError ?? undefined}
+        data-hls-first-error={failure?.code}
+        data-hls-error-host={failure?.host ?? undefined}
+        data-hls-error-stage={failure?.stage}
         data-hls-mode={mode}
         data-hls-status={status}
         muted={muted}
@@ -360,7 +397,22 @@ export function HlsVideoPlayer({
         <p className="channel-player__hls-error" role="status">
           {status === "unsupported"
             ? "Este navegador não oferece suporte à reprodução HLS."
-            : playbackErrorMessage(firstError)}
+            : failure
+              ? getHlsPlaybackErrorMessage(failure)
+              : "Não foi possível reproduzir esta transmissão. Atualize o player."}
+          {officialUrl && (
+            <>
+              {" "}
+              <a
+                data-canalmix-allow-external="true"
+                href={officialUrl}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                Abrir no site oficial
+              </a>
+            </>
+          )}
         </p>
       )}
     </>

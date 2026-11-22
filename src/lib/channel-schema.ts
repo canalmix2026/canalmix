@@ -13,6 +13,28 @@ export function isSafeHttpsUrl(value: string) {
   }
 }
 
+export function normalizeSafeHttpUrl(value: string) {
+  try {
+    const url = new URL(value.trim());
+    if (
+      (url.protocol !== "http:" && url.protocol !== "https:") ||
+      !url.hostname ||
+      url.username.length > 0 ||
+      url.password.length > 0 ||
+      url.href.length > 2048
+    ) {
+      return null;
+    }
+    return url.href;
+  } catch {
+    return null;
+  }
+}
+
+export function isSafeHttpUrl(value: string) {
+  return normalizeSafeHttpUrl(value) !== null;
+}
+
 const httpsUrl = z
   .string()
   .trim()
@@ -46,6 +68,20 @@ export const channelInputSchema = z.object({
 });
 
 export type ChannelInput = z.infer<typeof channelInputSchema>;
+
+export const channelProfileInputSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, "O nome deve ter pelo menos 2 caracteres.")
+    .max(80, "O nome deve ter no m\u00e1ximo 80 caracteres."),
+  categorySlug: z.string().trim().min(1, "Selecione uma categoria."),
+  thumbnailUrl: optionalHttpsUrl,
+  officialUrl: optionalHttpsUrl,
+  published: z.boolean(),
+});
+
+export type ChannelProfileInput = z.infer<typeof channelProfileInputSchema>;
 
 export function slugifyChannelName(name: string) {
   const slug = name

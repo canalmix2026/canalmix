@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element -- Channel artwork is admin-managed at runtime and is intentionally loaded directly instead of through the Next image optimizer. */
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   ChevronDown,
@@ -20,9 +20,16 @@ import {
 } from "lucide-react";
 import { sortCategories } from "@/lib/categories";
 import type { AdminCategory } from "@/lib/categories";
-import { isSafeHttpsUrl } from "@/lib/channel-schema";
-import { extractEmbedIframeSrc } from "@/lib/embed-code";
+import { isSafeHttpUrl, isSafeHttpsUrl } from "@/lib/channel-schema";
+import { parseEmbedIframeCode } from "@/lib/embed-code";
 import { EmbedFrame } from "@/components/embed-frame";
+import { HlsVideoPlayer } from "@/components/hls-video-player";
+import {
+  EMBED_SOURCE_TYPE_LABELS,
+  toChannelEmbedSourceDraft,
+  type ChannelEmbedSourceDraft,
+  type EmbedSourceType,
+} from "@/lib/channel-embed-sources";
 import type { ChannelCardData } from "@/lib/channels";
 import type { EmbedReferrerPolicy } from "@/lib/embed-provider-policy-core";
 import {
@@ -34,15 +41,29 @@ import {
 } from "@/app/admin/actions";
 
 type AdminChannel = ChannelCardData;
-type EmbedInputMode = "url" | "code";
 
 function iframeCodeForUrl(url: string) {
-  if (!url) {
-    return "";
-  }
-
+  if (!url) return "";
   const escapedUrl = url.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
   return `<iframe src="${escapedUrl}"></iframe>`;
+}
+
+function newEmbedDraft(): ChannelEmbedSourceDraft {
+  return {
+    id: crypto.randomUUID(),
+    type: "iframe-url",
+    active: true,
+    url: "",
+    iframeCode: "",
+  };
+}
+
+function isHlsMediaUrl(value: string) {
+  try {
+    return new URL(value).pathname.toLowerCase().endsWith(".m3u8");
+  } catch {
+    return false;
+  }
 }
 
 function moveItem<T>(items: T[], fromIndex: number, toIndex: number) {
@@ -64,56 +85,52 @@ function ChannelForm({
   onSaved: () => void;
 }) {
   const router = useRouter();
+  const previewVideoRef = useRef<HTMLVideoElement | null>(null);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [messageIsError, setMessageIsError] = useState(false);
   const [previewPending, setPreviewPending] = useState(false);
-  const [embedMode, setEmbedMode] = useState<EmbedInputMode>("url");
   const [thumbnailUrl, setThumbnailUrl] = useState(channel?.thumbnailUrl ?? "");
-  const [embedUrls, setEmbedUrls] = useState<string[]>(
-    channel?.embedUrls.length ? channel.embedUrls : [""],
-  );
-  const [embedSourceIds, setEmbedSourceIds] = useState<string[]>(
-    channel?.embedSourceIds ?? [],
-  );
-  const [embedSourceActive, setEmbedSourceActive] = useState<boolean[]>(
-    channel?.embedSourceActive.length
-      ? channel.embedSourceActive
-      : channel?.embedUrls.map(() => true) ?? [true],
-  );
-  const [embedCodes, setEmbedCodes] = useState<string[]>(
-    channel?.embedUrls.map(iframeCodeForUrl) ?? [""],
+  const [embedSources, setEmbedSources] = useState<ChannelEmbedSourceDraft[]>(() =>
+    channel?.embedSources.length
+      ? channel.embedSources.map(toChannelEmbedSourceDraft)
+      : [newEmbedDraft()],
   );
   const [draggedOption, setDraggedOption] = useState<number | null>(null);
   const [dropTargetOption, setDropTargetOption] = useState<number | null>(null);
   const [sourcePendingId, setSourcePendingId] = useState("");
   const [preview, setPreview] = useState<{
-    url: string;
+    source: ChannelEmbedSourceDraft;
     option: number;
+    url: string;
     referrerPolicy: EmbedReferrerPolicy;
   } | null>(null);
   const [previewError, setPreviewError] = useState("");
 
+  function updateOption(index: number, change: Partial<ChannelEmbedSourceDraft>) {
+    setEmbedSources((current) => current.map((source, item) =>
+      item === index ? { ...source, ...change } : source,
+    ));
+  }
+
   async function reorderOptions(fromIndex: number, toIndex: number) {
     if (
-      fromIndex === toIndex ||
-      fromIndex < 0 ||
-      toIndex < 0 ||
-      fromIndex >= embedUrls.length ||
-      toIndex >= embedUrls.length
-    ) {
-      return;
-    }
+      fromIndex === toIndex || fromIndex < 0 || toIndex < 0 ||
+      fromIndex >= embedSources.length || toIndex >= embedSources.length
+    ) return;
 
-    const sourceId = embedSourceIds[fromIndex];
-    if (channel && sourceId) {
+    const sourceId = embedSources[fromIndex].id;
+    const persistedIds = new Set(channel?.embedSources.map((source) => source.id) ?? []);
+    if (channel && persistedIds.has(sourceId) && embedSources.every((source) => persistedIds.has(source.id))) {
       setSourcePendingId(sourceId);
       const step = toIndex < fromIndex ? -1 : 1;
       let currentIndex = fromIndex;
-      let operationMessage = "Ordem da opção atualizada.";
       while (currentIndex !== toIndex) {
-        const operation = step < 0 ? "move-up" : "move-down";
-        const result = await updateChannelSourceAction(channel.id, sourceId, operation);
+        const result = await updateChannelSourceAction(
+          channel.id,
+          sourceId,
+          step < 0 ? "move-up" : "move-down",
+        );
         if (!result.success) {
           setSourcePendingId("");
           setMessage(result.message);
@@ -121,49 +138,36 @@ function ChannelForm({
           router.refresh();
           return;
         }
-        operationMessage = result.message;
         currentIndex += step;
       }
       setSourcePendingId("");
-      setMessage(operationMessage);
-      setMessageIsError(false);
       router.refresh();
     }
 
-    setEmbedUrls((current) => moveItem(current, fromIndex, toIndex));
-    setEmbedSourceIds((current) => moveItem(current, fromIndex, toIndex));
-    setEmbedSourceActive((current) => moveItem(current, fromIndex, toIndex));
-    setEmbedCodes((current) => moveItem(current, fromIndex, toIndex));
+    setEmbedSources((current) => moveItem(current, fromIndex, toIndex));
     setDraggedOption(null);
     setDropTargetOption(null);
   }
 
   async function setOptionVisibility(index: number, active: boolean) {
-    const sourceId = embedSourceIds[index];
-    if (!channel || !sourceId) {
-      setEmbedSourceActive((current) => {
-        const next = [...current];
-        next[index] = active;
-        return next;
-      });
+    const source = embedSources[index];
+    const isPersisted = channel?.embedSources.some((item) => item.id === source.id) ?? false;
+    if (!channel || !isPersisted) {
+      updateOption(index, { active });
       return;
     }
 
-    setSourcePendingId(sourceId);
+    setSourcePendingId(source.id);
     const result = await updateChannelSourceAction(
       channel.id,
-      sourceId,
+      source.id,
       active ? "reactivate" : "hide",
     );
     setSourcePendingId("");
     setMessage(result.message);
     setMessageIsError(!result.success);
     if (result.success) {
-      setEmbedSourceActive((current) => {
-        const next = [...current];
-        next[index] = active;
-        return next;
-      });
+      updateOption(index, { active });
       router.refresh();
     }
   }
@@ -173,20 +177,21 @@ function ChannelForm({
     setPending(true);
     setMessage("");
     setMessageIsError(false);
-
     const result = await saveChannelAction(new FormData(event.currentTarget));
     setPending(false);
     setMessage(result.message);
     setMessageIsError(!result.success);
-    if (result.success) {
-      onSaved();
-    }
+    if (result.success) onSaved();
   }
 
-  async function openPreview(url: string, option: number) {
-    url = url.trim();
-    if (!isSafeHttpsUrl(url)) {
-      setPreviewError("Informe uma URL HTTPS válida na opção " + option + ".");
+  async function openPreview(
+    source: ChannelEmbedSourceDraft,
+    url: string,
+    option: number,
+  ) {
+    const normalizedUrl = url.trim();
+    if (!isSafeHttpUrl(normalizedUrl)) {
+      setPreviewError("Informe uma URL HTTP ou HTTPS válida na opção " + option + ".");
       setPreview(null);
       return;
     }
@@ -194,17 +199,13 @@ function ChannelForm({
     setPreviewError("");
     setPreviewPending(true);
     try {
-      const policy = await getAdminEmbedPreviewPolicyAction(url);
+      const policy = await getAdminEmbedPreviewPolicyAction(normalizedUrl);
       if (!policy.success) {
         setPreviewError(policy.message);
         setPreview(null);
         return;
       }
-      setPreview({
-        url,
-        option,
-        referrerPolicy: policy.referrerPolicy,
-      });
+      setPreview({ source: { ...source }, option, url: normalizedUrl, referrerPolicy: policy.referrerPolicy });
     } catch {
       setPreviewError("Não foi possível carregar a prévia do player.");
       setPreview(null);
@@ -214,30 +215,42 @@ function ChannelForm({
   }
 
   function testEmbedOption(index: number) {
-    const url = embedMode === "url"
-      ? embedUrls[index]
-      : extractEmbedIframeSrc(embedCodes[index] ?? "") ?? "";
-
+    const source = embedSources[index];
+    const iframe = source.type === "iframe-code"
+      ? parseEmbedIframeCode(source.iframeCode)
+      : null;
+    const url = source.type === "iframe-code" ? iframe?.src ?? "" : source.url;
     if (!url) {
-      setPreviewError(
-        embedMode === "code"
-          ? "Cole um único iframe com src HTTPS válido na opção " + (index + 1) + "."
-          : "Informe uma URL HTTPS válida na opção " + (index + 1) + ".",
-      );
+      setPreviewError(source.type === "iframe-code"
+        ? "Cole um iframe válido com src HTTP ou HTTPS na opção " + (index + 1) + "."
+        : "Informe uma URL HTTP ou HTTPS válida na opção " + (index + 1) + ".");
       setPreview(null);
       return;
     }
+    if (source.type !== "iframe-code" && !isSafeHttpUrl(url.trim())) {
+      setPreviewError("Informe uma URL HTTP ou HTTPS válida na opção " + (index + 1) + ".");
+      setPreview(null);
+      return;
+    }
+    void openPreview(source, url, index + 1);
+  }
 
-    void openPreview(url, index + 1);
+  function getDraftUrl(source: ChannelEmbedSourceDraft) {
+    return source.type === "iframe-code"
+      ? parseEmbedIframeCode(source.iframeCode)?.src ?? ""
+      : source.url.trim();
   }
 
   const sortedCategories = sortCategories(categories);
+  const previewIframe = preview?.source.type === "iframe-code"
+    ? parseEmbedIframeCode(preview.source.iframeCode)
+    : null;
 
   return (
     <>
       <form className="channel-form" onSubmit={handleSubmit}>
         <input name="id" type="hidden" value={channel?.id ?? ""} />
-        <input name="embedMode" type="hidden" value={embedMode} />
+        <input name="embedSources" type="hidden" value={JSON.stringify(embedSources)} />
         <label htmlFor="channel-name">Nome do canal</label>
         <input
           autoComplete="off"
@@ -249,364 +262,204 @@ function ChannelForm({
         />
 
         <label htmlFor="channel-category">Categoria</label>
-        <select
-          defaultValue={channel?.categorySlug ?? ""}
-          id="channel-category"
-          name="categorySlug"
-          required
-        >
-          <option disabled value="">
-            Selecione uma categoria
-          </option>
+        <select defaultValue={channel?.categorySlug ?? ""} id="channel-category" name="categorySlug" required>
+          <option disabled value="">Selecione uma categoria</option>
           {sortedCategories
             .filter((category) => category.isActive || category.slug === channel?.categorySlug)
             .map((category) => (
-              <option
-                disabled={!category.isActive}
-                key={category.slug}
-                value={category.slug}
-              >
+              <option disabled={!category.isActive} key={category.slug} value={category.slug}>
                 {category.name}{category.isActive ? "" : " (oculta)"}
               </option>
             ))}
         </select>
 
-        <span className="channel-form__section-label">Opções de embed</span>
-        <div
-          aria-label="Modo de entrada do embed"
-          className="channel-form__embed-modes"
-          role="group"
-        >
-          <button
-            aria-pressed={embedMode === "url"}
-            className={
-              "channel-form__embed-mode" +
-              (embedMode === "url" ? " is-active" : "")
-            }
-            onClick={() => setEmbedMode("url")}
-            type="button"
-          >
-            Embed por URL
-          </button>
-          <button
-            aria-pressed={embedMode === "code"}
-            className={
-              "channel-form__embed-mode" +
-              (embedMode === "code" ? " is-active" : "")
-            }
-            onClick={() => setEmbedMode("code")}
-            type="button"
-          >
-            Embed por código
-          </button>
-        </div>
-        {embedMode === "code" && (
-          <p className="channel-form__hint">
-            Cole um único iframe por opção. O CanalMix salva somente a URL do src.
-          </p>
-        )}
-        {embedUrls.length > 1 && (
-          <p className="channel-form__hint">
-            Arraste pelo ícone de alça ou use as setas para mudar a ordem das opções.
-          </p>
+        <span className="channel-form__section-label">Opções de transmissão</span>
+        <p className="channel-form__hint">
+          Cada opção mantém seu próprio tipo, endereço e estado de visibilidade.
+          Se uma página HTTP for incorporada quando o CanalMix estiver em HTTPS, o navegador poderá bloqueá-la como conteúdo inseguro.
+        </p>
+        {embedSources.length > 1 && (
+          <p className="channel-form__hint">Arraste pela alça ou use as setas para mudar a ordem das opções.</p>
         )}
         <div className="channel-form__stream-options">
-          {embedUrls.map((url, index) => (
-            <div
-              className={
-                "channel-form__stream-option" +
-                (draggedOption === index ? " is-dragging" : "") +
-                (dropTargetOption === index ? " is-drop-target" : "")
-              }
-              key={index}
-              onDragOver={(event) => {
-                event.preventDefault();
-                setDropTargetOption(index);
-              }}
-              onDrop={(event) => {
-                event.preventDefault();
-                const fromIndex = Number(event.dataTransfer.getData("text/plain"));
-                if (Number.isInteger(fromIndex)) {
-                  reorderOptions(fromIndex, index);
-                }
-              }}
-            >
-              <div className="channel-form__stream-option-heading">
-              <span
+          {embedSources.map((source, index) => {
+            const previewUrl = getDraftUrl(source);
+            const isHttp = previewUrl.toLowerCase().startsWith("http://");
+            return (
+              <div
                 className={
-                  "channel-form__source-status" +
-                  (embedSourceActive[index] ? " is-visible" : " is-hidden")
+                  "channel-form__stream-option" +
+                  (draggedOption === index ? " is-dragging" : "") +
+                  (dropTargetOption === index ? " is-drop-target" : "")
                 }
+                key={source.id}
+                onDragOver={(event) => { event.preventDefault(); setDropTargetOption(index); }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  const fromIndex = Number(event.dataTransfer.getData("text/plain"));
+                  if (Number.isInteger(fromIndex)) void reorderOptions(fromIndex, index);
+                }}
               >
-                {embedSourceActive[index] ? "Visível" : "Oculta"}
-              </span>
-              <label htmlFor={`channel-embed-${index}`}>
-                {embedMode === "url" ? "URL do embed" : "Código do embed"} — Opção {index + 1}
-              </label>
-                {embedUrls.length > 1 && (
-                  <div className="channel-form__reorder-actions">
-                    <button
-                      aria-label={`Arrastar opção ${index + 1} para reordenar`}
-                      className="channel-form__drag-handle"
-                      draggable
-                      onDragEnd={() => {
-                        setDraggedOption(null);
-                        setDropTargetOption(null);
-                      }}
-                      onDragStart={(event) => {
-                        event.dataTransfer.effectAllowed = "move";
-                        event.dataTransfer.setData("text/plain", String(index));
-                        setDraggedOption(index);
-                      }}
-                      title="Arraste para mudar a ordem"
-                      type="button"
-                    >
-                      <GripVertical aria-hidden="true" size={18} />
-                    </button>
-                    <button
-                      aria-label={`Mover opção ${index + 1} para cima`}
-                      className="channel-form__move-option"
-                      disabled={index === 0 || Boolean(sourcePendingId)}
-                      onClick={() => void reorderOptions(index, index - 1)}
-                      title="Mover para cima"
-                      type="button"
-                    >
-                      <ChevronUp aria-hidden="true" size={17} />
-                    </button>
-                    <button
-                      aria-label={`Mover opção ${index + 1} para baixo`}
-                      className="channel-form__move-option"
-                      disabled={index === embedUrls.length - 1 || Boolean(sourcePendingId)}
-                      onClick={() => void reorderOptions(index, index + 1)}
-                      title="Mover para baixo"
-                      type="button"
-                    >
-                      <ChevronDown aria-hidden="true" size={17} />
-                    </button>
-                  </div>
-                )}
-              </div>
-              <div className="channel-form__embed-row">
-                <input
-                  name="embedSourceActive"
-                  type="hidden"
-                  value={embedSourceActive[index] ? "true" : "false"}
-                />
-                {embedMode === "url" ? (
-                  <input
-                    autoComplete="url"
-                    id={`channel-embed-${index}`}
-                    name="embedUrls"
+                <div className="channel-form__stream-option-heading">
+                  <span className={"channel-form__source-status" + (source.active ? " is-visible" : " is-hidden")}>
+                    {source.active ? "Visível" : "Oculta"}
+                  </span>
+                  <label htmlFor={`channel-embed-${source.id}`}>Opção {index + 1}</label>
+                  <select
+                    aria-label={`Tipo da opção ${index + 1}`}
+                    className="channel-form__source-type"
                     onChange={(event) => {
-                      const nextUrl = event.currentTarget.value;
-                      const nextUrls = [...embedUrls];
-                      nextUrls[index] = nextUrl;
-                      setEmbedUrls(nextUrls);
-
-                      const nextCodes = [...embedCodes];
-                      nextCodes[index] = iframeCodeForUrl(nextUrl);
-                      setEmbedCodes(nextCodes);
-                    }}
-                    placeholder="https://"
-                    required
-                    type="url"
-                    value={url}
-                  />
-                ) : (
-                  <textarea
-                    autoCapitalize="off"
-                    autoComplete="off"
-                    autoCorrect="off"
-                    className="channel-form__embed-code"
-                    id={`channel-embed-${index}`}
-                    name="embedCodes"
-                    onChange={(event) => {
-                      const nextCode = event.currentTarget.value;
-                      const nextCodes = [...embedCodes];
-                      nextCodes[index] = nextCode;
-                      setEmbedCodes(nextCodes);
-
-                      const extractedUrl = extractEmbedIframeSrc(nextCode);
-                      if (extractedUrl) {
-                        const nextUrls = [...embedUrls];
-                        nextUrls[index] = extractedUrl;
-                        setEmbedUrls(nextUrls);
+                      const type = event.currentTarget.value as EmbedSourceType;
+                      const next = { ...source, type };
+                      if (type === "iframe-code" && !next.iframeCode && next.url) {
+                        next.iframeCode = iframeCodeForUrl(next.url);
                       }
+                      updateOption(index, next);
                     }}
-                    placeholder={'<iframe src="https://..." title="..." allowfullscreen></iframe>'}
-                    required
-                    rows={4}
-                    spellCheck={false}
-                    value={embedCodes[index] ?? ""}
-                  />
-                )}
-                <button
-                  aria-label={`Testar Opção ${index + 1}`}
-                  className="outline-action"
-                  disabled={previewPending}
-                  onClick={() => testEmbedOption(index)}
-                  type="button"
-                >
-                  <Play aria-hidden="true" size={15} fill="currentColor" />
-                  Testar
-                </button>
-                <button
-                  aria-label={(embedSourceActive[index] ? "Ocultar" : "Reativar") + ` Opção ${index + 1}`}
-                  className="outline-action"
-                  disabled={Boolean(sourcePendingId)}
-                  onClick={() => void setOptionVisibility(index, !embedSourceActive[index])}
-                  type="button"
-                >
-                  {embedSourceActive[index] ? "Ocultar" : "Reativar"}
-                </button>
-                {embedUrls.length > 1 && (
-                  <button
-                    aria-label={`Remover opção ${index + 1}`}
-                    className="icon-button icon-button--danger channel-form__remove-option"
-                    onClick={() => {
-                      setEmbedUrls((current) => current.filter((_, item) => item !== index));
-                      setEmbedSourceIds((current) => current.filter((_, item) => item !== index));
-                      setEmbedSourceActive((current) => current.filter((_, item) => item !== index));
-                      setEmbedCodes((current) => current.filter((_, item) => item !== index));
-                    }}
-                    title={`Remover opção ${index + 1}`}
-                    type="button"
+                    value={source.type}
                   >
-                    <X aria-hidden="true" size={18} />
-                  </button>
+                    {(Object.entries(EMBED_SOURCE_TYPE_LABELS) as [EmbedSourceType, string][]).map(([type, label]) => (
+                      <option key={type} value={type}>{label}</option>
+                    ))}
+                  </select>
+                  {embedSources.length > 1 && (
+                    <div className="channel-form__reorder-actions">
+                      <button
+                        aria-label={`Arrastar opção ${index + 1} para reordenar`}
+                        className="channel-form__drag-handle"
+                        draggable
+                        onDragEnd={() => { setDraggedOption(null); setDropTargetOption(null); }}
+                        onDragStart={(event) => {
+                          event.dataTransfer.effectAllowed = "move";
+                          event.dataTransfer.setData("text/plain", String(index));
+                          setDraggedOption(index);
+                        }}
+                        title="Arraste para mudar a ordem"
+                        type="button"
+                      ><GripVertical aria-hidden="true" size={18} /></button>
+                      <button aria-label={`Mover opção ${index + 1} para cima`} className="channel-form__move-option" disabled={index === 0 || Boolean(sourcePendingId)} onClick={() => void reorderOptions(index, index - 1)} title="Mover para cima" type="button"><ChevronUp aria-hidden="true" size={17} /></button>
+                      <button aria-label={`Mover opção ${index + 1} para baixo`} className="channel-form__move-option" disabled={index === embedSources.length - 1 || Boolean(sourcePendingId)} onClick={() => void reorderOptions(index, index + 1)} title="Mover para baixo" type="button"><ChevronDown aria-hidden="true" size={17} /></button>
+                    </div>
+                  )}
+                </div>
+                <div className="channel-form__embed-row">
+                  {source.type === "iframe-code" ? (
+                    <textarea
+                      autoCapitalize="off"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      className="channel-form__embed-code"
+                      id={`channel-embed-${source.id}`}
+                      onChange={(event) => {
+                        const iframeCode = event.currentTarget.value;
+                        const parsed = parseEmbedIframeCode(iframeCode);
+                        updateOption(index, {
+                          iframeCode,
+                          ...(parsed ? { url: parsed.src } : {}),
+                        });
+                      }}
+                      placeholder={'<iframe src="https://..." title="..." allow="..." allowfullscreen></iframe>'}
+                      required
+                      rows={4}
+                      spellCheck={false}
+                      value={source.iframeCode}
+                    />
+                  ) : (
+                    <input
+                      autoComplete="url"
+                      id={`channel-embed-${source.id}`}
+                      onChange={(event) => updateOption(index, { url: event.currentTarget.value })}
+                      placeholder="https://"
+                      required
+                      type="url"
+                      value={source.url}
+                    />
+                  )}
+                  <button aria-label={`Testar Opção ${index + 1}`} className="outline-action" disabled={previewPending} onClick={() => testEmbedOption(index)} type="button"><Play aria-hidden="true" size={15} fill="currentColor" />Testar</button>
+                  <button aria-label={(source.active ? "Ocultar" : "Reativar") + ` Opção ${index + 1}`} className="outline-action" disabled={Boolean(sourcePendingId)} onClick={() => void setOptionVisibility(index, !source.active)} type="button">{source.active ? "Ocultar" : "Reativar"}</button>
+                  {embedSources.length > 1 && (
+                    <button
+                      aria-label={`Remover opção ${index + 1}`}
+                      className="icon-button icon-button--danger channel-form__remove-option"
+                      onClick={() => setEmbedSources((current) => current.filter((_, item) => item !== index))}
+                      title={`Remover opção ${index + 1}`}
+                      type="button"
+                    ><X aria-hidden="true" size={18} /></button>
+                  )}
+                </div>
+                {isHttp && (
+                  <p className="channel-form__hint" role="status">
+                    Esta URL usa HTTP. Em uma página HTTPS, o navegador pode bloquear o player por conteúdo misto.
+                  </p>
                 )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
-        <button
-          className="secondary-button channel-form__add-option"
-          onClick={() => {
-            setEmbedUrls((current) => [...current, ""]);
-            setEmbedSourceIds((current) => [...current, ""]);
-            setEmbedSourceActive((current) => [...current, true]);
-            setEmbedCodes((current) => [...current, ""]);
-          }}
-          type="button"
-        >
-          <Plus aria-hidden="true" size={17} />
-          Adicionar opção de player
+        <button className="secondary-button channel-form__add-option" onClick={() => setEmbedSources((current) => [...current, newEmbedDraft()])} type="button">
+          <Plus aria-hidden="true" size={17} />Adicionar opção de player
         </button>
-        {previewError && (
-          <p className="form-error" role="alert">
-            {previewError}
-          </p>
-        )}
+        {previewError && <p className="form-error" role="alert">{previewError}</p>}
 
         <label htmlFor="channel-thumbnail">Logo ou miniatura (opcional)</label>
-        <input
-          autoComplete="url"
-          id="channel-thumbnail"
-          name="thumbnailUrl"
-          onChange={(event) => setThumbnailUrl(event.currentTarget.value)}
-          placeholder="https://"
-          type="url"
-          value={thumbnailUrl}
-        />
+        <input autoComplete="url" id="channel-thumbnail" name="thumbnailUrl" onChange={(event) => setThumbnailUrl(event.currentTarget.value)} placeholder="https://" type="url" value={thumbnailUrl} />
         {isSafeHttpsUrl(thumbnailUrl.trim()) && (
           <figure className="channel-form__thumbnail-preview">
-            <div className="channel-form__thumbnail-frame">
-              <img
-                alt="Prévia da imagem inteira do canal"
-                referrerPolicy="no-referrer"
-                src={thumbnailUrl.trim()}
-              />
-            </div>
+            <div className="channel-form__thumbnail-frame"><img alt="Prévia da imagem inteira do canal" referrerPolicy="no-referrer" src={thumbnailUrl.trim()} /></div>
             <figcaption>Encaixe automático, com a imagem inteira e sem cortes.</figcaption>
           </figure>
         )}
 
         <label htmlFor="channel-official">Link oficial (opcional)</label>
-        <input
-          autoComplete="url"
-          defaultValue={channel?.officialUrl ?? ""}
-          id="channel-official"
-          name="officialUrl"
-          placeholder="https://"
-          type="url"
-        />
-
+        <input autoComplete="url" defaultValue={channel?.officialUrl ?? ""} id="channel-official" name="officialUrl" placeholder="https://" type="url" />
         <label className="publish-choice">
-          <input
-            defaultChecked={channel?.isPublished ?? false}
-            name="published"
-            type="checkbox"
-            value="true"
-          />
-          <span className="publish-choice__toggle" aria-hidden="true" />
-          <span>Publicar no catálogo</span>
+          <input defaultChecked={channel?.isPublished ?? false} name="published" type="checkbox" value="true" />
+          <span className="publish-choice__toggle" aria-hidden="true" /><span>Publicar no catálogo</span>
         </label>
-        <p className="channel-form__hint">
-          Canais novos ficam ocultos até você marcar esta opção.
-        </p>
-
-        {message && (
-          <p
-            className={messageIsError ? "form-error" : "form-success"}
-            role="status"
-          >
-            {message}
-          </p>
-        )}
-
+        <p className="channel-form__hint">Canais novos ficam ocultos até você marcar esta opção.</p>
+        {message && <p className={messageIsError ? "form-error" : "form-success"} role="status">{message}</p>}
         <div className="channel-form__footer">
-          <button className="secondary-button" onClick={onClose} type="button">
-            Cancelar
-          </button>
-          <button className="primary-button" disabled={pending || Boolean(sourcePendingId)} type="submit">
-            {pending ? "Salvando..." : channel ? "Salvar alterações" : "Salvar canal"}
-          </button>
+          <button className="secondary-button" onClick={onClose} type="button">Cancelar</button>
+          <button className="primary-button" disabled={pending || Boolean(sourcePendingId)} type="submit">{pending ? "Salvando..." : channel ? "Salvar alterações" : "Salvar canal"}</button>
         </div>
       </form>
 
       {preview && (
         <div className="preview-backdrop">
-          <section
-            aria-labelledby="preview-title"
-            aria-label="Prévia"
-            aria-modal="true"
-            className="player-preview"
-            role="dialog"
-          >
+          <section aria-labelledby="preview-title" aria-label="Prévia" aria-modal="true" className="player-preview" role="dialog">
             <header className="player-preview__header">
               <div>
-                <p className="eyebrow">Prévia</p>
-                <h3 id="preview-title">
-                  {channel?.name
-                    ? `Prévia: ${channel.name} — Opção ${preview.option}`
-                    : `Prévia do player — Opção ${preview.option}`}
-                </h3>
+                <p className="eyebrow">Prévia · {EMBED_SOURCE_TYPE_LABELS[preview.source.type]}</p>
+                <h3 id="preview-title">{channel?.name ? `Prévia: ${channel.name} — Opção ${preview.option}` : `Prévia do player — Opção ${preview.option}`}</h3>
               </div>
-              <button
-                aria-label="Fechar prévia"
-                className="icon-button"
-                onClick={() => setPreview(null)}
-                type="button"
-              >
-                <X aria-hidden="true" size={21} />
-              </button>
+              <button aria-label="Fechar prévia" className="icon-button" onClick={() => setPreview(null)} type="button"><X aria-hidden="true" size={21} /></button>
             </header>
-            <EmbedFrame
-              className="channel-player__frame"
-              src={preview.url}
-              title={"Prévia do player do canal " + (channel?.name || "novo")}
-              referrerPolicy={preview.referrerPolicy}
-            />
-            <p className="channel-player__notice">
-              Se o player não iniciar, o provedor pode bloquear a incorporação.
-            </p>
+            {preview.source.type === "direct-url" ? (
+              isHlsMediaUrl(preview.url) ? (
+                <HlsVideoPlayer key={preview.url} src={preview.url} title="Prévia do link direto" muted={false} videoRef={previewVideoRef} onCanPlay={() => {}} onVolumeChange={() => {}} />
+              ) : (
+                <video aria-label="Prévia do link direto" className="channel-player__video" controls playsInline preload="metadata" src={preview.url} />
+              )
+            ) : (
+              <EmbedFrame
+                className="channel-player__frame"
+                src={preview.url}
+                title={previewIframe?.title || "Prévia do player do canal " + (channel?.name || "novo")}
+                referrerPolicy={preview.referrerPolicy}
+                allow={preview.source.type === "iframe-code" ? previewIframe?.allow ?? "" : undefined}
+                allowFullScreen={preview.source.type === "iframe-code" ? previewIframe?.allowFullscreen ?? false : undefined}
+              />
+            )}
+            {preview.url.toLowerCase().startsWith("http://") && (
+              <p className="channel-player__notice">Uma página HTTP pode ser bloqueada pelo navegador como conteúdo inseguro quando o CanalMix estiver em HTTPS.</p>
+            )}
+            <p className="channel-player__notice">Se o player não iniciar, o provedor pode bloquear a incorporação ou a reprodução.</p>
           </section>
         </div>
       )}
     </>
   );
 }
-
 export function AdminPanel({
   channels,
   categories,

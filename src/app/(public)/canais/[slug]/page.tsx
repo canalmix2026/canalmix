@@ -65,7 +65,9 @@ export default async function ChannelPage({
         <ChannelPlayer
           channelId={channel.id}
           channelName={channel.name}
+          officialUrl={channel.officialUrl}
           embedUrls={channel.embedUrls}
+          embedSources={channel.embedSources}
           embedSourceIds={channel.embedSourceIds}
           referrerPolicies={channel.embedUrls.map(
             getProviderEmbedReferrerPolicy,

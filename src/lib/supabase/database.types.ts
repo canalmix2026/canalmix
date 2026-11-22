@@ -81,6 +81,7 @@ export type ChannelRow = {
   slug: string;
   name: string;
   category_id: number;
+  embed_sources: Json;
   embed_urls: string[];
   embed_source_ids: string[];
   embed_source_active: boolean[];
@@ -226,6 +227,7 @@ export type Database = {
           slug: string;
           name: string;
           category_id: number;
+          embed_sources?: Json;
           embed_urls: string[];
           embed_source_ids?: string[];
           embed_source_active?: boolean[];
@@ -242,6 +244,7 @@ export type Database = {
           slug?: string;
           name?: string;
           category_id?: number;
+          embed_sources?: Json;
           embed_urls?: string[];
           embed_source_ids?: string[];
           embed_source_active?: boolean[];

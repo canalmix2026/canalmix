@@ -864,6 +864,13 @@ select:focus-visible {
   font-size: 14px;
 }
 
+.channel-player__hls-error a {
+  color: var(--aqua);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .channel-player__frame:fullscreen,
 .channel-player__video:fullscreen {
   width: 100vw;
@@ -1644,6 +1651,14 @@ select:focus-visible {
   font-weight: 600;
 }
 
+.channel-form__stream-option-heading .channel-form__source-type {
+  width: auto;
+  min-width: 170px;
+  min-height: 38px;
+  flex: 0 1 220px;
+  margin-left: auto;
+}
+
 .channel-form__source-status {
   flex: 0 0 auto;
   color: var(--muted);
@@ -2321,6 +2336,11 @@ select:focus-visible {
 
   .channel-form__stream-option-heading > label {
     font-size: 12px;
+  }
+
+  .channel-form__stream-option-heading .channel-form__source-type {
+    min-width: 145px;
+    flex-basis: 170px;
   }
 
   .channel-form__drag-handle,

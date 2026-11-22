@@ -6,6 +6,10 @@ import {
 import type { AdminCategory, CategoryOption } from "@/lib/categories";
 import type { CategoryRow, ChannelRow } from "@/lib/supabase/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  getChannelEmbedSourceUrl,
+  type ChannelEmbedSource,
+} from "@/lib/channel-embed-sources";
 
 export type ChannelCardData = {
   id: string;
@@ -13,6 +17,7 @@ export type ChannelCardData = {
   name: string;
   categorySlug: string;
   categoryName: string;
+  embedSources: ChannelEmbedSource[];
   embedUrls: string[];
   embedSourceIds: string[];
   embedSourceActive: boolean[];
@@ -73,11 +78,9 @@ function mapChannels(
         return [];
       }
 
-      const sourcePairs = channel.embed_urls.map((url, index) => ({
-        url,
-        id: channel.embed_source_ids[index],
-        active: channel.embed_source_active[index] ?? true,
-      }));
+      const sourcePairs = (channel.embed_sources as unknown as ChannelEmbedSource[]).map(
+        (source) => source,
+      );
       const availableSources = includeHiddenSources
         ? sourcePairs
         : sourcePairs.filter((source) => source.active);
@@ -89,7 +92,8 @@ function mapChannels(
           name: channel.name,
           categorySlug: category.slug,
           categoryName: category.name,
-          embedUrls: availableSources.map((source) => source.url),
+          embedSources: availableSources,
+          embedUrls: availableSources.map(getChannelEmbedSourceUrl),
           embedSourceIds: availableSources.map((source) => source.id),
           embedSourceActive: availableSources.map((source) => source.active),
           thumbnailUrl: channel.thumbnail_url,
@@ -117,7 +121,7 @@ export async function getPublishedCatalog(): Promise<CatalogResult> {
       supabase
         .from("channels")
         .select(
-          "id, slug, name, category_id, embed_urls, embed_source_ids, embed_source_active, thumbnail_url, official_url, is_published, published_at, created_by, created_at, updated_at",
+          "id, slug, name, category_id, embed_sources, embed_urls, embed_source_ids, embed_source_active, thumbnail_url, official_url, is_published, published_at, created_by, created_at, updated_at",
         )
         .eq("is_published", true),
       supabase
@@ -161,7 +165,7 @@ export async function getPublishedChannelBySlug(slug: string) {
     supabase
       .from("channels")
       .select(
-        "id, slug, name, category_id, embed_urls, embed_source_ids, embed_source_active, thumbnail_url, official_url, is_published, published_at, created_by, created_at, updated_at",
+        "id, slug, name, category_id, embed_sources, embed_urls, embed_source_ids, embed_source_active, thumbnail_url, official_url, is_published, published_at, created_by, created_at, updated_at",
       )
       .eq("slug", slug)
       .eq("is_published", true)
@@ -196,7 +200,7 @@ export async function getAdminCatalog() {
     supabase
       .from("channels")
       .select(
-        "id, slug, name, category_id, embed_urls, embed_source_ids, embed_source_active, thumbnail_url, official_url, is_published, published_at, created_by, created_at, updated_at",
+        "id, slug, name, category_id, embed_sources, embed_urls, embed_source_ids, embed_source_active, thumbnail_url, official_url, is_published, published_at, created_by, created_at, updated_at",
       ),
     supabase.from("categories").select("id, slug, name, is_active, created_at"),
   ]);
