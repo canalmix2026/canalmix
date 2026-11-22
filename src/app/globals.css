@@ -856,7 +856,8 @@ select:focus-visible {
   background: #050615;
 }
 
-.channel-player__hls-error {
+.channel-player__hls-error,
+.channel-player__dash-error {
   position: absolute;
   inset-inline: 0;
   bottom: 0;

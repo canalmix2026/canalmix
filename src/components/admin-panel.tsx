@@ -23,6 +23,7 @@ import type { AdminCategory } from "@/lib/categories";
 import { isSafeHttpUrl, isSafeHttpsUrl } from "@/lib/channel-schema";
 import { parseEmbedIframeCode } from "@/lib/embed-code";
 import { EmbedFrame } from "@/components/embed-frame";
+import { DashVideoPlayer } from "@/components/dash-video-player";
 import { HlsVideoPlayer } from "@/components/hls-video-player";
 import {
   EMBED_SOURCE_TYPE_LABELS,
@@ -435,7 +436,9 @@ function ChannelForm({
               </div>
               <button aria-label="Fechar prévia" className="icon-button" onClick={() => setPreview(null)} type="button"><X aria-hidden="true" size={21} /></button>
             </header>
-            {preview.source.type === "direct-url" ? (
+            {preview.source.type === "mpeg-dash" ? (
+              <DashVideoPlayer key={preview.url} src={preview.url} title="Prévia do player MPEG-DASH" muted={false} videoRef={previewVideoRef} onCanPlay={() => {}} onVolumeChange={() => {}} />
+            ) : preview.source.type === "direct-url" ? (
               isHlsMediaUrl(preview.url) ? (
                 <HlsVideoPlayer key={preview.url} src={preview.url} title="Prévia do link direto" muted={false} videoRef={previewVideoRef} onCanPlay={() => {}} onVolumeChange={() => {}} />
               ) : (

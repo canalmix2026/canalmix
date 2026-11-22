@@ -744,7 +744,7 @@ export async function saveChannelAction(
   const sourceDraftSchema = z.object({
     id: z.string().uuid(),
     isNew: z.boolean().optional(),
-    type: z.enum(["direct-url", "iframe-url", "iframe-code"]),
+    type: z.enum(["direct-url", "iframe-url", "iframe-code", "mpeg-dash"]),
     active: z.boolean(),
     url: z.string().max(2048),
     iframeCode: z.string().max(10_000),

@@ -11,12 +11,14 @@ import {
 import { Flag, Maximize2, Minimize2, RotateCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { EmbedFrame } from "@/components/embed-frame";
+import { DashVideoPlayer } from "@/components/dash-video-player";
 import { HlsVideoPlayer } from "@/components/hls-video-player";
 import { YouTubeEmbedFrame } from "@/components/youtube-embed-frame";
 import { ReportStreamIssueDialog } from "@/components/report-stream-issue-dialog";
 import { useVisitorPlaybackPresence } from "@/components/visitor-presence-provider";
 import type { EmbedReferrerPolicy } from "@/lib/embed-provider-policy-core";
 import type { ChannelEmbedSource } from "@/lib/channel-embed-sources";
+import { getChannelPlayerMode } from "@/lib/channel-player-mode";
 
 function isYouTubeEmbed(src: string) {
   try {
@@ -30,14 +32,6 @@ function isYouTubeEmbed(src: string) {
         "www.youtube-nocookie.com",
       ].includes(hostname) && url.pathname.startsWith("/embed/")
     );
-  } catch {
-    return false;
-  }
-}
-
-function isHlsSource(src: string) {
-  try {
-    return new URL(src).pathname.toLowerCase().endsWith(".m3u8");
   } catch {
     return false;
   }
@@ -100,12 +94,15 @@ export function ChannelPlayer({
   const embedUrl = embedUrls[selectedOption] ?? embedUrls[0] ?? "";
   const embedSource = embedSources[selectedOption] ?? embedSources[0];
   const playerKey = channelId + ":" + (embedSource?.id ?? selectedOption) + ":" + refreshKey;
-  const isDirectSource = embedSource?.type === "direct-url";
-  const isHls = isHlsSource(embedUrl);
-  const isNativeVideo = isDirectSource && !isHls;
+  const playerMode = getChannelPlayerMode(embedSource?.type, embedUrl);
+  const isDash = playerMode === "mpeg-dash";
+  const isHls = playerMode === "hls";
+  const isNativeVideo = playerMode === "native-video";
+  const isDirectSource = isHls || isNativeVideo;
   const isYouTube = embedSource?.type === "iframe-url" && isYouTubeEmbed(embedUrl);
   const canRequestFullscreen =
     isDirectSource ||
+    isDash ||
     embedSource?.type === "iframe-url" ||
     (embedSource?.type === "iframe-code" &&
       "src" in embedSource.content &&
@@ -185,13 +182,13 @@ export function ChannelPlayer({
   useEffect(() => {
     const video = videoRef.current;
     if (
-      (isNativeVideo || isHls) &&
+      (isNativeVideo || isHls || isDash) &&
       video &&
       video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA
     ) {
       void attemptVideoAutoplay(video);
     }
-  }, [attemptVideoAutoplay, isHls, isNativeVideo, playerKey]);
+  }, [attemptVideoAutoplay, isDash, isHls, isNativeVideo, playerKey]);
 
   const handleYouTubeApiError = useCallback(() => undefined, []);
 
@@ -443,7 +440,18 @@ export function ChannelPlayer({
         </p>
       ) : (
         <div className="channel-player__stage">
-          {isDirectSource && isHls ? (
+          {isDash ? (
+        <DashVideoPlayer
+          key={playerKey}
+          src={embedUrl}
+          title={"Player do canal " + channelName}
+          videoRef={videoRef}
+          muted={isMuted}
+          onCanPlay={handleVideoCanPlay}
+          onPlaying={handleVideoPlaying}
+          onVolumeChange={handleVideoVolumeChange}
+        />
+      ) : isHls ? (
         <HlsVideoPlayer
           key={playerKey}
           src={embedUrl}

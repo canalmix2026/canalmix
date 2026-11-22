@@ -1,4 +1,8 @@
-export type EmbedSourceType = "direct-url" | "iframe-url" | "iframe-code";
+export type EmbedSourceType =
+  | "direct-url"
+  | "iframe-url"
+  | "iframe-code"
+  | "mpeg-dash";
 
 export type EmbedSourceContent =
   | { url: string }
@@ -29,6 +33,7 @@ export const EMBED_SOURCE_TYPE_LABELS: Record<EmbedSourceType, string> = {
   "direct-url": "Link direto",
   "iframe-url": "Página para incorporar",
   "iframe-code": "Código iframe",
+  "mpeg-dash": "MPEG-DASH (MPD)",
 };
 
 export const DEFAULT_IFRAME_ALLOW =
