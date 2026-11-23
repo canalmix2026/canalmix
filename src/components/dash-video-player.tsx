@@ -23,18 +23,20 @@ export function DashVideoPlayer({
   onPlaying?: () => void;
   onVolumeChange: (event: SyntheticEvent<HTMLVideoElement>) => void;
 }) {
-  const [status, setStatus] = useState<"loading" | "playing" | "error">("loading");
+  const [playback, setPlayback] = useState<{
+    src: string;
+    status: "loading" | "playing" | "error";
+  }>({ src, status: "loading" });
+  const status = playback.src === src ? playback.status : "loading";
 
   useEffect(() => {
     const video = videoRef.current;
     let disposed = false;
     let player: MediaPlayerClass | null = null;
 
-    setStatus("loading");
-
     const showError = () => {
       if (!disposed) {
-        setStatus("error");
+        setPlayback({ src, status: "error" });
       }
     };
 
@@ -75,9 +77,9 @@ export function DashVideoPlayer({
         data-dash-status={status}
         muted={muted}
         onCanPlay={onCanPlay}
-        onError={() => setStatus("error")}
+        onError={() => setPlayback({ src, status: "error" })}
         onPlaying={() => {
-          setStatus("playing");
+          setPlayback({ src, status: "playing" });
           onPlaying?.();
         }}
         onVolumeChange={onVolumeChange}

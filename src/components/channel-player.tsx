@@ -84,6 +84,7 @@ export function ChannelPlayer({
   const [autoplayBlockedWithSound, setAutoplayBlockedWithSound] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenError, setFullscreenError] = useState<string | null>(null);
+  const playerContainerRef = useRef<HTMLElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const attemptedVideoAutoplay = useRef(new WeakSet<HTMLVideoElement>());
@@ -100,20 +101,44 @@ export function ChannelPlayer({
   const isNativeVideo = playerMode === "native-video";
   const isDirectSource = isHls || isNativeVideo;
   const isYouTube = embedSource?.type === "iframe-url" && isYouTubeEmbed(embedUrl);
+  const iframeContent =
+    embedSource?.type === "iframe-code" && "src" in embedSource.content
+      ? embedSource.content
+      : null;
+  const iframeAllowsFullscreen =
+    Boolean(iframeContent?.allowFullscreen) ||
+    Boolean(
+      iframeContent?.allow
+        ?.split(";")
+        .some((permission) => permission.trim().toLowerCase() === "fullscreen"),
+    );
+  const iframeAllow = iframeContent
+    ? [
+        iframeContent.allow ?? "",
+        iframeAllowsFullscreen &&
+        !iframeContent.allow
+          ?.split(";")
+          .some((permission) => permission.trim().toLowerCase() === "fullscreen")
+          ? "fullscreen"
+          : "",
+      ]
+        .filter(Boolean)
+        .join("; ")
+    : undefined;
+  const isIframeSource =
+    embedSource?.type === "iframe-url" || embedSource?.type === "iframe-code";
   const canRequestFullscreen =
     isDirectSource ||
     isDash ||
     embedSource?.type === "iframe-url" ||
-    (embedSource?.type === "iframe-code" &&
-      "src" in embedSource.content &&
-      embedSource.content.allowFullscreen);
+    iframeAllowsFullscreen;
   const syncMutedState = useCallback((muted: boolean) => {
     setIsMuted(muted);
   }, []);
 
   useEffect(() => {
     const syncFullscreenState = () => {
-      setIsFullscreen(Boolean(document.fullscreenElement));
+      setIsFullscreen(document.fullscreenElement === playerContainerRef.current);
     };
 
     syncFullscreenState();
@@ -286,7 +311,7 @@ export function ChannelPlayer({
   }
 
   async function toggleFullscreen() {
-    const target = iframeRef.current ?? videoRef.current;
+    const target = playerContainerRef.current;
     setFullscreenError(null);
 
     if (!target) {
@@ -301,7 +326,11 @@ export function ChannelPlayer({
         await target.requestFullscreen();
       }
     } catch {
-      setFullscreenError("O navegador bloqueou a tela cheia para esta opção.");
+      setFullscreenError(
+        isIframeSource
+          ? "A tela cheia foi bloqueada pelo navegador ou pela política de permissões do provedor desta incorporação."
+          : "O navegador bloqueou a tela cheia para esta opção.",
+      );
     }
   }
 
@@ -366,6 +395,7 @@ export function ChannelPlayer({
       aria-label={"Player de " + channelName}
       onKeyDownCapture={handlePlayerKeyDownCapture}
       onKeyDown={handlePlayerKeyDown}
+      ref={playerContainerRef}
     >
       {embedUrls.length > 0 && <div className="channel-player__controls">
         {embedUrls.length > 1 && (
@@ -502,16 +532,8 @@ export function ChannelPlayer({
               : "Player do canal " + channelName
           }
           referrerPolicy={referrerPolicies[selectedOption]}
-          allow={
-            embedSource?.type === "iframe-code" && "src" in embedSource.content
-              ? embedSource.content.allow ?? ""
-              : undefined
-          }
-          allowFullScreen={
-            embedSource?.type === "iframe-code" && "src" in embedSource.content
-              ? embedSource.content.allowFullscreen ?? false
-              : undefined
-          }
+          allow={iframeAllow}
+          allowFullScreen={iframeContent ? iframeAllowsFullscreen : undefined}
         />
           )}
         </div>

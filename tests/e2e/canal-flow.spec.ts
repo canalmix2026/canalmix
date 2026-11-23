@@ -15,12 +15,15 @@ let nonAdminUser: TestUser;
 let navigationChannel: TestChannel;
 let premiereChannel: PremiereChannel;
 let nativeVideoChannel: TestChannel;
+let hlsFullscreenChannel: TestChannel;
 let youtubeChannel: TestChannel;
 let premiereOptionTwoUrl = "";
 let crudChannelName = "";
 let crudChannelSlug = "";
 let nativeMultiVideoChannel: TestChannel;
 const channelIds: string[] = [];
+const hlsFullscreenUrl =
+  "https://jmp2.uk/plu-64d626ac9b414d000820e2fc.m3u8?canalmix_test=screen&token=keep%2Bvalue";
 const embedTestDocument = `<!doctype html>
 <html><body>
   <button id="play">Play</button>
@@ -244,6 +247,13 @@ test.beforeAll(async () => {
     "https://media.canalmix.test/audio-test.mp4",
   ]);
 
+  hlsFullscreenChannel = {
+    id: "",
+    slug: "canalmix-teste-hls-fullscreen-" + suffix,
+    name: "TESTE Tela cheia HLS CanalMix",
+  };
+  await insertTestChannel(hlsFullscreenChannel, category.id, [hlsFullscreenUrl]);
+
   nativeMultiVideoChannel = {
     id: "",
     slug: "canalmix-teste-autoplay-opcoes-" + suffix,
@@ -426,6 +436,70 @@ test("player de vídeo próprio mantém autoplay sem controles extras de áudio 
   expect(await firstVideo?.evaluate((element) => element.isConnected)).toBe(false);
   await expect(video).toHaveJSProperty("muted", true);
 });
+for (const [viewportName, viewport] of [
+  ["desktop", { width: 1280, height: 720 }],
+  ["celular", { width: 390, height: 844 }],
+] as const) {
+  test(`HLS usa o URL M3U8 original e expande o player inteiro em tela cheia no ${viewportName}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    const hlsRequests: string[] = [];
+    page.on("request", (request) => {
+      if (request.url().startsWith(hlsFullscreenUrl)) {
+        hlsRequests.push(request.url());
+      }
+    });
+    await page.route("https://jmp2.uk/**", (route) => route.abort());
+    await page.goto("/canais/" + hlsFullscreenChannel.slug);
+
+    const player = page.locator(".channel-player");
+    const stage = page.locator(".channel-player__stage");
+    const video = page.locator("video.channel-player__video");
+    await expect(video).toHaveAttribute("data-hls-mode", "hls.js");
+    await expect.poll(() => hlsRequests.includes(hlsFullscreenUrl)).toBe(true);
+
+    await page.getByRole("button", { name: "Tela cheia" }).click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => document.fullscreenElement === document.querySelector(".channel-player"),
+        ),
+      )
+      .toBe(true);
+    await expect(page.getByRole("button", { name: "Sair da tela cheia" })).toBeVisible();
+
+    const fullscreenLayout = await player.evaluate((container) => {
+      const stageElement = container.querySelector(".channel-player__stage");
+      const videoElement = container.querySelector("video");
+      const containerRect = container.getBoundingClientRect();
+      const stageRect = stageElement?.getBoundingClientRect();
+      const videoRect = videoElement?.getBoundingClientRect();
+
+      return {
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+        containerWidth: containerRect.width,
+        containerHeight: containerRect.height,
+        stageWidth: stageRect?.width ?? 0,
+        stageHeight: stageRect?.height ?? 0,
+        videoWidth: videoRect?.width ?? 0,
+        videoHeight: videoRect?.height ?? 0,
+        objectFit: videoElement ? getComputedStyle(videoElement).objectFit : "",
+      };
+    });
+    expect(Math.abs(fullscreenLayout.containerWidth - fullscreenLayout.viewportWidth)).toBeLessThan(2);
+    expect(Math.abs(fullscreenLayout.containerHeight - fullscreenLayout.viewportHeight)).toBeLessThan(2);
+    expect(fullscreenLayout.stageWidth).toBeGreaterThan(0);
+    expect(fullscreenLayout.stageHeight).toBeGreaterThan(0);
+    expect(fullscreenLayout.videoWidth).toBe(fullscreenLayout.stageWidth);
+    expect(fullscreenLayout.videoHeight).toBe(fullscreenLayout.stageHeight);
+    expect(fullscreenLayout.objectFit).toBe("contain");
+
+    await page.getByRole("button", { name: "Sair da tela cheia" }).click();
+    await expect.poll(() => page.evaluate(() => document.fullscreenElement)).toBe(null);
+    await expect(stage).toBeVisible();
+  });
+}
+
 test("cadastra, publica, edita, oculta, republica e exclui um canal", async ({
   page,
 }) => {

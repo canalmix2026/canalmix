@@ -38,7 +38,21 @@ test("legacy source types keep their current playback paths", () => {
   );
   assert.equal(
     getChannelPlayerMode("iframe-url", "https://cdn.example.test/live.m3u8"),
-    "embed",
+    "hls",
+  );
+  assert.equal(
+    getChannelPlayerMode(
+      "iframe-url",
+      "https://jmp2.uk/plu-64d626ac9b414d000820e2fc.m3u8?token=kept",
+    ),
+    "hls",
+  );
+  assert.equal(
+    getChannelPlayerMode(
+      "iframe-code",
+      "https://cdn.example.test/live.m3u8?token=kept",
+    ),
+    "hls",
   );
   assert.equal(
     getChannelPlayerMode("iframe-code", "https://cdn.example.test/manifest.mpd"),

@@ -14,15 +14,13 @@ export function getChannelPlayerMode(
     return "mpeg-dash";
   }
 
-  if (sourceType !== "direct-url") {
-    return "embed";
+  try {
+    if (new URL(src).pathname.toLowerCase().endsWith(".m3u8")) {
+      return "hls";
+    }
+  } catch {
+    // Let the existing direct/embed fallback handle URLs the parser rejects.
   }
 
-  try {
-    return new URL(src).pathname.toLowerCase().endsWith(".m3u8")
-      ? "hls"
-      : "native-video";
-  } catch {
-    return "native-video";
-  }
+  return sourceType === "direct-url" ? "native-video" : "embed";
 }

@@ -7,10 +7,14 @@ test("HLS.js follows an authorized redirect through quality playlists and segmen
   page,
 }) => {
   const requestedPaths: string[] = [];
+  const requestedUrls: string[] = [];
   let streamOrigin = "";
+  const originalToken = "registered-source-token-with-query-parameters";
+  const redirectToken = "final-manifest-session-token-" + "long-".repeat(12);
   const streamServer = createServer((request, response) => {
     const requestUrl = new URL(request.url ?? "/", streamOrigin || "http://127.0.0.1");
     requestedPaths.push(requestUrl.pathname);
+    requestedUrls.push(requestUrl.href);
 
     const corsHeaders = {
       "Access-Control-Allow-Origin": "http://127.0.0.1:3000",
@@ -28,7 +32,7 @@ test("HLS.js follows an authorized redirect through quality playlists and segmen
     if (requestUrl.pathname === "/start.m3u8") {
       response.writeHead(302, {
         ...corsHeaders,
-        Location: streamOrigin + "/cdn/master.m3u8",
+        Location: streamOrigin + "/cdn/master.m3u8?session=" + redirectToken,
       });
       response.end();
       return;
@@ -40,7 +44,7 @@ test("HLS.js follows an authorized redirect through quality playlists and segmen
         "Content-Type": "application/vnd.apple.mpegurl",
       });
       response.end(
-        "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=640x360\n/cdn/high.m3u8\n",
+        "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=640x360\n/cdn/high.m3u8?session=" + redirectToken + "\n",
       );
       return;
     }
@@ -51,7 +55,7 @@ test("HLS.js follows an authorized redirect through quality playlists and segmen
         "Content-Type": "application/vnd.apple.mpegurl",
       });
       response.end(
-        "#EXTM3U\n#EXT-X-TARGETDURATION:4\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:4.0,\n/cdn/segment.ts\n#EXT-X-ENDLIST\n",
+        "#EXTM3U\n#EXT-X-TARGETDURATION:4\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:4.0,\n/cdn/segment.ts?session=" + redirectToken + "\n#EXT-X-ENDLIST\n",
       );
       return;
     }
@@ -82,6 +86,11 @@ test("HLS.js follows an authorized redirect through quality playlists and segmen
     await page.addScriptTag({
       path: path.resolve("node_modules/hls.js/dist/hls.min.js"),
     });
+    const registeredUrl =
+      streamOrigin +
+      "/start.m3u8?token=" +
+      encodeURIComponent(originalToken) +
+      "&channel=plu-64d626ac9b414d000820e2fc";
     await page.evaluate((sourceUrl) => {
       type TestHlsData = {
         url?: string;
@@ -166,7 +175,7 @@ test("HLS.js follows an authorized redirect through quality playlists and segmen
         if (error.fatal) result.error = error.details ?? "fatal HLS error";
       });
       hls.attachMedia(video);
-    }, streamOrigin + "/start.m3u8");
+    }, registeredUrl);
 
     await expect
       .poll(() =>
@@ -209,6 +218,10 @@ test("HLS.js follows an authorized redirect through quality playlists and segmen
         "/cdn/high.m3u8",
         "/cdn/segment.ts",
       ]),
+    );
+    expect(requestedUrls).toContain(registeredUrl);
+    expect(requestedUrls).toContain(
+      streamOrigin + "/cdn/master.m3u8?session=" + redirectToken,
     );
   } finally {
     await new Promise<void>((resolve, reject) => {

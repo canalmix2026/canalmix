@@ -31,6 +31,7 @@ import {
   type ChannelEmbedSourceDraft,
   type EmbedSourceType,
 } from "@/lib/channel-embed-sources";
+import { getChannelPlayerMode } from "@/lib/channel-player-mode";
 import type { ChannelCardData } from "@/lib/channels";
 import type { EmbedReferrerPolicy } from "@/lib/embed-provider-policy-core";
 import {
@@ -58,14 +59,6 @@ function newEmbedDraft(): ChannelEmbedSourceDraft {
     url: "",
     iframeCode: "",
   };
-}
-
-function isHlsMediaUrl(value: string) {
-  try {
-    return new URL(value).pathname.toLowerCase().endsWith(".m3u8");
-  } catch {
-    return false;
-  }
 }
 
 function moveItem<T>(items: T[], fromIndex: number, toIndex: number) {
@@ -247,6 +240,9 @@ function ChannelForm({
   const previewIframe = preview?.source.type === "iframe-code"
     ? parseEmbedIframeCode(preview.source.iframeCode)
     : null;
+  const previewPlayerMode = preview
+    ? getChannelPlayerMode(preview.source.type, preview.url)
+    : "embed";
 
   return (
     <>
@@ -436,14 +432,12 @@ function ChannelForm({
               </div>
               <button aria-label="Fechar prévia" className="icon-button" onClick={() => setPreview(null)} type="button"><X aria-hidden="true" size={21} /></button>
             </header>
-            {preview.source.type === "mpeg-dash" ? (
+            {previewPlayerMode === "mpeg-dash" ? (
               <DashVideoPlayer key={preview.url} src={preview.url} title="Prévia do player MPEG-DASH" muted={false} videoRef={previewVideoRef} onCanPlay={() => {}} onVolumeChange={() => {}} />
-            ) : preview.source.type === "direct-url" ? (
-              isHlsMediaUrl(preview.url) ? (
-                <HlsVideoPlayer key={preview.url} src={preview.url} title="Prévia do link direto" muted={false} videoRef={previewVideoRef} onCanPlay={() => {}} onVolumeChange={() => {}} />
-              ) : (
-                <video aria-label="Prévia do link direto" className="channel-player__video" controls playsInline preload="metadata" src={preview.url} />
-              )
+            ) : previewPlayerMode === "hls" ? (
+              <HlsVideoPlayer key={preview.url} src={preview.url} title="Prévia HLS/M3U8" muted={false} videoRef={previewVideoRef} onCanPlay={() => {}} onVolumeChange={() => {}} />
+            ) : previewPlayerMode === "native-video" ? (
+              <video aria-label="Prévia do link direto" className="channel-player__video" controls playsInline preload="metadata" src={preview.url} />
             ) : (
               <EmbedFrame
                 className="channel-player__frame"
