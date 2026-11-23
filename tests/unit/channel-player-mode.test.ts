@@ -27,6 +27,21 @@ test("MPEG-DASH uses its saved type even without an .mpd path", () => {
   assert.equal(EMBED_SOURCE_TYPE_LABELS["mpeg-dash"], "MPEG-DASH (MPD)");
 });
 
+test("MPEG-TS uses its own player and URL inference ignores query strings", () => {
+  const sourceUrl = "https://cdn.example.test/live/channel.ts?token=private";
+  const source: ChannelEmbedSource = {
+    id: "96d2f748-f81f-4abe-950b-cc830253a402",
+    type: "mpeg-ts",
+    content: { url: sourceUrl },
+    active: true,
+  };
+
+  assert.equal(getChannelPlayerMode(source.type, sourceUrl), "mpeg-ts");
+  assert.equal(getChannelPlayerMode("direct-url", sourceUrl), "native-video");
+  assert.equal(inferEmbedSourceTypeFromUrl(sourceUrl), "mpeg-ts");
+  assert.equal(EMBED_SOURCE_TYPE_LABELS["mpeg-ts"], "MPEG-TS ao vivo (.ts)");
+});
+
 test("legacy source types keep their current playback paths", () => {
   assert.equal(
     getChannelPlayerMode("direct-url", "https://cdn.example.test/live.m3u8?token=x"),
@@ -60,6 +75,10 @@ test("legacy source types keep their current playback paths", () => {
   );
   assert.equal(
     getChannelPlayerMode("iframe-code", "https://cdn.example.test/manifest.mpd"),
+    "embed",
+  );
+  assert.equal(
+    getChannelPlayerMode("iframe-url", "https://cdn.example.test/segments/0001.ts"),
     "embed",
   );
 });

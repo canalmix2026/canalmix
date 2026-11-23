@@ -60,6 +60,10 @@ test("aceita HTTP em fontes de vídeo e exige HTTPS para páginas incorporadas",
     "http://cdn.example.test/live.mpd",
   );
   assert.equal(
+    normalizeChannelSourceUrl("http://cdn.example.test/live/channel.ts", "mpeg-ts"),
+    "http://cdn.example.test/live/channel.ts",
+  );
+  assert.equal(
     normalizeChannelSourceUrl("https://player.example.test/watch", "iframe-url"),
     "https://player.example.test/watch",
   );

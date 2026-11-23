@@ -2,7 +2,8 @@ export type EmbedSourceType =
   | "direct-url"
   | "iframe-url"
   | "iframe-code"
-  | "mpeg-dash";
+  | "mpeg-dash"
+  | "mpeg-ts";
 
 export type EmbedSourceContent =
   | { url: string }
@@ -34,6 +35,7 @@ export const EMBED_SOURCE_TYPE_LABELS: Record<EmbedSourceType, string> = {
   "iframe-url": "Página para incorporar",
   "iframe-code": "Código iframe",
   "mpeg-dash": "MPEG-DASH (MPD)",
+  "mpeg-ts": "MPEG-TS ao vivo (.ts)",
 };
 
 export const DEFAULT_IFRAME_ALLOW =
@@ -54,6 +56,14 @@ export function isDirectVideoUrl(value: string) {
 export function isMpegDashUrl(value: string) {
   try {
     return new URL(value).pathname.toLowerCase().endsWith(".mpd");
+  } catch {
+    return false;
+  }
+}
+
+export function isMpegTsUrl(value: string) {
+  try {
+    return new URL(value).pathname.toLowerCase().endsWith(".ts");
   } catch {
     return false;
   }
@@ -94,6 +104,10 @@ export function toChannelEmbedSourceDraft(
 export function inferEmbedSourceTypeFromUrl(url: string): EmbedSourceType {
   if (isMpegDashUrl(url)) {
     return "mpeg-dash";
+  }
+
+  if (isMpegTsUrl(url)) {
+    return "mpeg-ts";
   }
 
   return isDirectVideoUrl(url) ? "direct-url" : "iframe-url";

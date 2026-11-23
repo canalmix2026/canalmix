@@ -25,8 +25,10 @@ import { parseEmbedIframeCode } from "@/lib/embed-code";
 import { EmbedFrame } from "@/components/embed-frame";
 import { DashVideoPlayer } from "@/components/dash-video-player";
 import { HlsVideoPlayer } from "@/components/hls-video-player";
+import { MpegTsVideoPlayer } from "@/components/mpegts-video-player";
 import {
   EMBED_SOURCE_TYPE_LABELS,
+  inferEmbedSourceTypeFromUrl,
   toChannelEmbedSourceDraft,
   type ChannelEmbedSourceDraft,
   type EmbedSourceType,
@@ -279,6 +281,9 @@ function ChannelForm({
         {embedSources.length > 1 && (
           <p className="channel-form__hint">Arraste pela alça ou use as setas para mudar a ordem das opções.</p>
         )}
+        <p className="channel-form__hint">
+          MPEG-TS (.ts) precisa ser um fluxo contínuo. Se a origem entrega segmentos separados, use a playlist HLS (.m3u8), que informa a ordem e o próximo segmento. Em páginas HTTPS, a origem também precisa oferecer HTTPS e permitir CORS.
+        </p>
         <div className="channel-form__stream-options">
           {embedSources.map((source, index) => {
             const previewUrl = getDraftUrl(source);
@@ -368,7 +373,7 @@ function ChannelForm({
                       id={`channel-embed-${source.id}`}
                       onChange={(event) => updateOption(index, { url: event.currentTarget.value })}
                       placeholder={
-                        source.type === "direct-url" || source.type === "mpeg-dash"
+                        source.type === "direct-url" || source.type === "mpeg-dash" || source.type === "mpeg-ts"
                           ? "https:// ou http://"
                           : "https://"
                       }
@@ -376,6 +381,22 @@ function ChannelForm({
                       type="url"
                       value={source.url}
                     />
+                  )}
+                  {source.type !== "iframe-code" && (
+                    <button
+                      aria-label={`Detectar tipo da opção ${index + 1}`}
+                      className="outline-action"
+                      disabled={!isSafeHttpUrl(source.url.trim())}
+                      onClick={() => {
+                        updateOption(index, {
+                          type: inferEmbedSourceTypeFromUrl(source.url.trim()),
+                        });
+                      }}
+                      title="Detectar tipo pela extensão da URL"
+                      type="button"
+                    >
+                      <Search aria-hidden="true" size={15} />Detectar tipo
+                    </button>
                   )}
                   <button aria-label={`Testar Opção ${index + 1}`} className="outline-action" disabled={previewPending} onClick={() => testEmbedOption(index)} type="button"><Play aria-hidden="true" size={15} fill="currentColor" />Testar</button>
                   <button aria-label={(source.active ? "Ocultar" : "Reativar") + ` Opção ${index + 1}`} className="outline-action" disabled={Boolean(sourcePendingId)} onClick={() => void setOptionVisibility(index, !source.active)} type="button">{source.active ? "Ocultar" : "Reativar"}</button>
@@ -394,6 +415,8 @@ function ChannelForm({
                     ? "Arquivos de vídeo compatíveis usam reprodução nativa; URLs M3U8 usam o player HLS."
                     : source.type === "mpeg-dash"
                       ? "Manifestos MPD são reproduzidos com dash.js."
+                      : source.type === "mpeg-ts"
+                        ? "Transmissões MPEG-TS ao vivo usam mpegts.js quando o navegador oferece suporte a MSE; CORS, HTTP/HTTPS e codecs dependem da origem e do aparelho."
                       : source.type === "iframe-code"
                         ? "O código é analisado e somente o endereço e as permissões compatíveis são usados."
                         : "Use esta opção para uma página de player incorporável."}
@@ -449,6 +472,8 @@ function ChannelForm({
             </header>
             {previewPlayerMode === "mpeg-dash" ? (
               <DashVideoPlayer key={preview.url} src={preview.url} title="Prévia do player MPEG-DASH" muted={false} videoRef={previewVideoRef} onCanPlay={() => {}} onVolumeChange={() => {}} />
+            ) : previewPlayerMode === "mpeg-ts" ? (
+              <MpegTsVideoPlayer key={preview.url} src={preview.url} title="Prévia de transmissão MPEG-TS" muted={false} videoRef={previewVideoRef} onCanPlay={() => {}} onVolumeChange={() => {}} />
             ) : previewPlayerMode === "hls" ? (
               <HlsVideoPlayer key={preview.url} src={preview.url} title="Prévia HLS/M3U8" muted={false} videoRef={previewVideoRef} onCanPlay={() => {}} onVolumeChange={() => {}} />
             ) : previewPlayerMode === "native-video" ? (

@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { EmbedFrame } from "@/components/embed-frame";
 import { DashVideoPlayer } from "@/components/dash-video-player";
 import { HlsVideoPlayer } from "@/components/hls-video-player";
+import { MpegTsVideoPlayer } from "@/components/mpegts-video-player";
 import { YouTubeEmbedFrame } from "@/components/youtube-embed-frame";
 import { ReportStreamIssueDialog } from "@/components/report-stream-issue-dialog";
 import { useVisitorPlaybackPresence } from "@/components/visitor-presence-provider";
@@ -103,6 +104,7 @@ export function ChannelPlayer({
   const showMixedContentNotice =
     isHttpsPage && isMixedContentSource(embedUrl, "https:");
   const isDash = playerMode === "mpeg-dash";
+  const isMpegTs = playerMode === "mpeg-ts";
   const isHls = playerMode === "hls";
   const isNativeVideo = playerMode === "native-video";
   const isDirectSource = isHls || isNativeVideo;
@@ -135,6 +137,7 @@ export function ChannelPlayer({
     embedSource?.type === "iframe-url" || embedSource?.type === "iframe-code";
   const canRequestFullscreen =
     isDirectSource ||
+    isMpegTs ||
     isDash ||
     embedSource?.type === "iframe-url" ||
     iframeAllowsFullscreen;
@@ -217,13 +220,13 @@ export function ChannelPlayer({
   useEffect(() => {
     const video = videoRef.current;
     if (
-      (isNativeVideo || isHls || isDash) &&
+      (isNativeVideo || isHls || isDash || isMpegTs) &&
       video &&
       video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA
     ) {
       void attemptVideoAutoplay(video);
     }
-  }, [attemptVideoAutoplay, isDash, isHls, isNativeVideo, playerKey]);
+  }, [attemptVideoAutoplay, isDash, isHls, isMpegTs, isNativeVideo, playerKey]);
 
   const handleYouTubeApiError = useCallback(() => undefined, []);
 
@@ -497,6 +500,17 @@ export function ChannelPlayer({
           src={embedUrl}
           title={"Player do canal " + channelName}
           officialUrl={officialUrl}
+          videoRef={videoRef}
+          muted={isMuted}
+          onCanPlay={handleVideoCanPlay}
+          onPlaying={handleVideoPlaying}
+          onVolumeChange={handleVideoVolumeChange}
+        />
+      ) : isMpegTs ? (
+        <MpegTsVideoPlayer
+          key={playerKey}
+          src={embedUrl}
+          title={"Player MPEG-TS do canal " + channelName}
           videoRef={videoRef}
           muted={isMuted}
           onCanPlay={handleVideoCanPlay}

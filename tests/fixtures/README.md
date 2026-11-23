@@ -1,0 +1,1 @@
+`mpegts-test-pattern.bin` is a locally generated four-second H.264/AAC MPEG-TS sample using a blue test image and a generated 440 Hz tone. It contains no broadcast or third-party media and is used only by the local playback E2E test.

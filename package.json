@@ -26,6 +26,7 @@
     "dashjs": "5.2.1",
     "hls.js": "1.7.4",
     "lucide-react": "1.70.0",
+    "mpegts.js": "1.8.2",
     "next": "16.4.5",
     "qrcode.react": "4.2.0",
     "react": "19.3.0",

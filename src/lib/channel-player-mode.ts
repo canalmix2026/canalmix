@@ -2,6 +2,7 @@ import type { EmbedSourceType } from "@/lib/channel-embed-sources";
 
 export type ChannelPlayerMode =
   | "mpeg-dash"
+  | "mpeg-ts"
   | "hls"
   | "native-video"
   | "embed";
@@ -12,6 +13,10 @@ export function getChannelPlayerMode(
 ): ChannelPlayerMode {
   if (sourceType === "mpeg-dash") {
     return "mpeg-dash";
+  }
+
+  if (sourceType === "mpeg-ts") {
+    return "mpeg-ts";
   }
 
   try {

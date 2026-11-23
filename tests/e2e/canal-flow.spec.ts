@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test, type Page, type Route } from "@playwright/test";
 import localSupabase from "../../scripts/local-supabase.cjs";
@@ -856,4 +857,152 @@ test("cadastra, publica, edita, oculta, republica e exclui um canal", async ({
   await expect(page.getByText(editedName)).toHaveCount(0);
   const deletedResponse = await page.goto("/canais/" + crudChannelSlug);
   expect(deletedResponse?.status()).toBe(404);
+});
+
+test("salva uma opção MPEG-TS e limita a reconexão a uma tentativa", async ({ page }) => {
+  await signIn(page, adminUser);
+
+  const channelName = "TESTE MPEG-TS CanalMix " + crypto.randomUUID().slice(0, 8);
+  const streamUrl = "http://mpegts-test.canalmix.test/live/channel.ts";
+  const hlsUrl = "https://mpegts-test.canalmix.test/live/channel.m3u8";
+  const dashUrl = "https://mpegts-test.canalmix.test/live/channel.mpd";
+  const iframeUrl = "https://mpegts-test.canalmix.test/embed/channel";
+  const mpegTsFixture = await readFile(
+    "tests/fixtures/mpegts-test-pattern.bin",
+  );
+  let shouldFailStream = false;
+  let failedRequestCount = 0;
+  await page.route(streamUrl, async (route) => {
+    if (shouldFailStream) {
+      failedRequestCount += 1;
+      await route.fulfill({
+        status: 503,
+        headers: {
+          "Content-Type": "video/mp2t",
+        },
+        body: "",
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      headers: {
+        "Access-Control-Allow-Origin": "http://127.0.0.1:3000",
+        "Content-Type": "video/mp2t",
+      },
+      body: mpegTsFixture,
+    });
+  });
+  await page.route(hlsUrl, (route) => route.abort());
+  await page.route(dashUrl, (route) => route.abort());
+  await page.route(iframeUrl, (route) => route.fulfill({
+    status: 200,
+    contentType: "text/html",
+    body: "<!doctype html><title>CanalMix iframe test</title>",
+  }));
+
+  await page.getByRole("button", { name: "Adicionar canal" }).click();
+  await page.getByLabel("Nome do canal").fill(channelName);
+  await page.getByLabel("Categoria", { exact: true }).selectOption("canais-abertos");
+  await page.getByLabel("Tipo da opção 1", { exact: true }).selectOption("mpeg-ts");
+  await page.getByLabel("Opção 1", { exact: true }).fill(streamUrl);
+  await page.getByRole("button", { name: "Adicionar opção de player" }).click();
+  await page.getByLabel("Opção 2", { exact: true }).fill(hlsUrl);
+  await page.getByRole("button", { name: "Detectar tipo da opção 2" }).click();
+  await expect(page.getByLabel("Tipo da opção 2", { exact: true })).toHaveValue("direct-url");
+  await page.getByRole("button", { name: "Adicionar opção de player" }).click();
+  await page.getByLabel("Tipo da opção 3", { exact: true }).selectOption("mpeg-dash");
+  await page.getByLabel("Opção 3", { exact: true }).fill(dashUrl);
+  await page.getByRole("button", { name: "Adicionar opção de player" }).click();
+  await page.getByLabel("Tipo da opção 4", { exact: true }).selectOption("iframe-url");
+  await page.getByLabel("Opção 4", { exact: true }).fill(iframeUrl);
+  await page.getByRole("button", { name: "Salvar canal" }).click();
+  await expect(page.getByText(channelName)).toBeVisible();
+
+  const { data: savedChannel, error } = await adminClient
+    .from("channels")
+    .select("id, slug, embed_urls, embed_sources")
+    .eq("name", channelName)
+    .maybeSingle();
+  expect(error).toBeNull();
+  expect(savedChannel).not.toBeNull();
+  if (!savedChannel) return;
+  channelIds.push(savedChannel.id);
+  expect(savedChannel.embed_urls).toEqual([streamUrl, hlsUrl, dashUrl, iframeUrl]);
+  expect(savedChannel.embed_sources).toMatchObject([
+    { type: "mpeg-ts", content: { url: streamUrl } },
+    { type: "direct-url", content: { url: hlsUrl } },
+    { type: "mpeg-dash", content: { url: dashUrl } },
+    { type: "iframe-url", content: { url: iframeUrl } },
+  ]);
+
+  await page.getByRole("button", { name: "Publicar " + channelName }).click();
+  await page.addInitScript(() => {
+    const originalPlay = HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play = function () {
+      this.muted = true;
+      return originalPlay.call(this);
+    };
+  });
+  await page.goto("/canais/" + savedChannel.slug);
+  const video = page.locator("video[data-mpegts-status]");
+  await expect(video).toBeVisible();
+  await expect(video).toHaveAttribute("data-mpegts-status", "playing", {
+    timeout: 20_000,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(video).toBeVisible();
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect(page.getByRole("button", { name: "Tela cheia" })).toBeVisible();
+  await page.getByRole("button", { name: "Tela cheia" }).click();
+  await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(true);
+  await page.getByRole("button", { name: "Sair da tela cheia" }).click();
+  await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(false);
+  await expect(video).toHaveAttribute("data-mpegts-status", "error", {
+    timeout: 12_000,
+  });
+  await expect(page.locator(".channel-player__mpegts-error")).toContainText(
+    "playlist HLS (.m3u8)",
+  );
+
+  await page.getByRole("button", { name: "Opção 2", exact: true }).click();
+  await expect(page.locator("video[data-hls-status]")).toBeVisible();
+  await page.getByRole("button", { name: "Opção 3", exact: true }).click();
+  await expect(page.locator("video[data-dash-status]")).toBeVisible();
+  await page.getByRole("button", { name: "Opção 4", exact: true }).click();
+  await expect(page.locator("iframe.channel-player__frame")).toHaveAttribute("src", iframeUrl);
+
+  shouldFailStream = true;
+  await page.getByRole("button", { name: "Opção 1", exact: true }).click();
+  await expect(video).toHaveAttribute("data-mpegts-status", "error", {
+    timeout: 20_000,
+  });
+  await expect.poll(() => failedRequestCount).toBe(2);
+  await expect(page.locator(".channel-player__mpegts-error")).toContainText(
+    "transmissão está indisponível",
+  );
+  const pageUrl = page.url();
+  await page.getByRole("button", { name: "Atualizar player" }).click();
+  await expect(video).toHaveAttribute("data-mpegts-status", "error", {
+    timeout: 20_000,
+  });
+  await expect.poll(() => failedRequestCount).toBe(4);
+  expect(page.url()).toBe(pageUrl);
+
+  shouldFailStream = false;
+  await page.goto("/tv");
+  const tvCategory = page.locator('[data-tv-iptv-key="category:canais-abertos"]');
+  await expect(tvCategory).toBeFocused();
+  await page.keyboard.press("Enter");
+  const tvMpegTsOption = page.getByRole("button", {
+    name: channelName + " (Opção 1)",
+    exact: true,
+  });
+  await tvMpegTsOption.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("video[data-mpegts-status]")).toHaveAttribute(
+    "data-mpegts-status",
+    "playing",
+    { timeout: 20_000 },
+  );
 });
