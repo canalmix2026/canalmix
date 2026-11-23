@@ -15,12 +15,29 @@ export function getChannelPlayerMode(
   }
 
   try {
-    if (new URL(src).pathname.toLowerCase().endsWith(".m3u8")) {
+    const pathname = new URL(src).pathname.toLowerCase();
+    if (pathname.endsWith(".m3u8")) {
       return "hls";
+    }
+
+    if (sourceType === "direct-url" && pathname.endsWith(".mpd")) {
+      return "mpeg-dash";
     }
   } catch {
     // Let the existing direct/embed fallback handle URLs the parser rejects.
   }
 
   return sourceType === "direct-url" ? "native-video" : "embed";
+}
+
+export function isMixedContentSource(src: string, pageProtocol: string) {
+  if (pageProtocol !== "https:") {
+    return false;
+  }
+
+  try {
+    return new URL(src).protocol === "http:";
+  } catch {
+    return false;
+  }
 }

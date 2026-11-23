@@ -18,7 +18,10 @@ import { ReportStreamIssueDialog } from "@/components/report-stream-issue-dialog
 import { useVisitorPlaybackPresence } from "@/components/visitor-presence-provider";
 import type { EmbedReferrerPolicy } from "@/lib/embed-provider-policy-core";
 import type { ChannelEmbedSource } from "@/lib/channel-embed-sources";
-import { getChannelPlayerMode } from "@/lib/channel-player-mode";
+import {
+  getChannelPlayerMode,
+  isMixedContentSource,
+} from "@/lib/channel-player-mode";
 
 function isYouTubeEmbed(src: string) {
   try {
@@ -84,6 +87,7 @@ export function ChannelPlayer({
   const [autoplayBlockedWithSound, setAutoplayBlockedWithSound] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenError, setFullscreenError] = useState<string | null>(null);
+  const [isHttpsPage, setIsHttpsPage] = useState(false);
   const playerContainerRef = useRef<HTMLElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -96,6 +100,8 @@ export function ChannelPlayer({
   const embedSource = embedSources[selectedOption] ?? embedSources[0];
   const playerKey = channelId + ":" + (embedSource?.id ?? selectedOption) + ":" + refreshKey;
   const playerMode = getChannelPlayerMode(embedSource?.type, embedUrl);
+  const showMixedContentNotice =
+    isHttpsPage && isMixedContentSource(embedUrl, "https:");
   const isDash = playerMode === "mpeg-dash";
   const isHls = playerMode === "hls";
   const isNativeVideo = playerMode === "native-video";
@@ -134,6 +140,10 @@ export function ChannelPlayer({
     iframeAllowsFullscreen;
   const syncMutedState = useCallback((muted: boolean) => {
     setIsMuted(muted);
+  }, []);
+
+  useEffect(() => {
+    setIsHttpsPage(window.location.protocol === "https:");
   }, []);
 
   useEffect(() => {
@@ -561,6 +571,11 @@ export function ChannelPlayer({
           ? "Se uma opção não iniciar, teste outra. A reprodução depende das permissões do provedor."
           : "Se o player não iniciar, a transmissão pode estar temporariamente indisponível ou o provedor pode bloquear a incorporação."}
       </p>}
+      {showMixedContentNotice && (
+        <p className="channel-player__mixed-content-warning" role="status">
+          Esta opção usa HTTP. Em uma página HTTPS, o navegador pode bloqueá-la como conteúdo misto; para reproduzi-la, a origem precisa oferecer HTTPS.
+        </p>
+      )}
     </section>
   );
 }

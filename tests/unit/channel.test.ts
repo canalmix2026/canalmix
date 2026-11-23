@@ -8,6 +8,7 @@ import {
 import {
   channelInputSchema,
   isSafeHttpsUrl,
+  normalizeChannelSourceUrl,
   slugifyChannelName,
 } from "@/lib/channel-schema";
 
@@ -47,6 +48,29 @@ test("valida URLs HTTPS e rejeita protocolos e credenciais", () => {
   assert.equal(isSafeHttpsUrl("javascript:alert(1)"), false);
   assert.equal(isSafeHttpsUrl("https://user:pass@example.test/embed"), false);
   assert.equal(isSafeHttpsUrl("não é URL"), false);
+});
+
+test("aceita HTTP em fontes de vídeo e exige HTTPS para páginas incorporadas", () => {
+  assert.equal(
+    normalizeChannelSourceUrl("http://cdn.example.test/video.mp4", "direct-url"),
+    "http://cdn.example.test/video.mp4",
+  );
+  assert.equal(
+    normalizeChannelSourceUrl("http://cdn.example.test/live.mpd", "mpeg-dash"),
+    "http://cdn.example.test/live.mpd",
+  );
+  assert.equal(
+    normalizeChannelSourceUrl("https://player.example.test/watch", "iframe-url"),
+    "https://player.example.test/watch",
+  );
+  assert.equal(
+    normalizeChannelSourceUrl("http://player.example.test/watch", "iframe-url"),
+    null,
+  );
+  assert.equal(
+    normalizeChannelSourceUrl("http://player.example.test/watch", "iframe-code"),
+    null,
+  );
 });
 
 test("valida dados do canal e mantém URLs opcionais nulas", () => {

@@ -51,6 +51,14 @@ export function isDirectVideoUrl(value: string) {
   }
 }
 
+export function isMpegDashUrl(value: string) {
+  try {
+    return new URL(value).pathname.toLowerCase().endsWith(".mpd");
+  } catch {
+    return false;
+  }
+}
+
 export function toChannelEmbedSourceDraft(
   source: ChannelEmbedSource,
 ): ChannelEmbedSourceDraft {
@@ -84,6 +92,10 @@ export function toChannelEmbedSourceDraft(
 }
 
 export function inferEmbedSourceTypeFromUrl(url: string): EmbedSourceType {
+  if (isMpegDashUrl(url)) {
+    return "mpeg-dash";
+  }
+
   return isDirectVideoUrl(url) ? "direct-url" : "iframe-url";
 }
 

@@ -2,10 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   EMBED_SOURCE_TYPE_LABELS,
+  inferEmbedSourceTypeFromUrl,
   toChannelEmbedSourceDraft,
   type ChannelEmbedSource,
 } from "@/lib/channel-embed-sources";
-import { getChannelPlayerMode } from "@/lib/channel-player-mode";
+import {
+  getChannelPlayerMode,
+  isMixedContentSource,
+} from "@/lib/channel-player-mode";
 
 test("MPEG-DASH uses its saved type even without an .mpd path", () => {
   const source: ChannelEmbedSource = {
@@ -34,7 +38,7 @@ test("legacy source types keep their current playback paths", () => {
   );
   assert.equal(
     getChannelPlayerMode("direct-url", "https://cdn.example.test/manifest.mpd"),
-    "native-video",
+    "mpeg-dash",
   );
   assert.equal(
     getChannelPlayerMode("iframe-url", "https://cdn.example.test/live.m3u8"),
@@ -58,4 +62,30 @@ test("legacy source types keep their current playback paths", () => {
     getChannelPlayerMode("iframe-code", "https://cdn.example.test/manifest.mpd"),
     "embed",
   );
+});
+
+test("HTTP and HTTPS video URLs select the player for each source type", () => {
+  assert.equal(
+    getChannelPlayerMode("direct-url", "http://cdn.example.test/video.mp4"),
+    "native-video",
+  );
+  assert.equal(
+    getChannelPlayerMode("direct-url", "http://cdn.example.test/live.m3u8?token=x"),
+    "hls",
+  );
+  assert.equal(
+    getChannelPlayerMode("direct-url", "https://cdn.example.test/live.mpd?token=x"),
+    "mpeg-dash",
+  );
+  assert.equal(
+    getChannelPlayerMode("iframe-url", "http://player.example.test/watch"),
+    "embed",
+  );
+  assert.equal(inferEmbedSourceTypeFromUrl("http://cdn.example.test/live.mpd?token=x"), "mpeg-dash");
+});
+
+test("mixed-content warning is limited to HTTP sources on HTTPS pages", () => {
+  assert.equal(isMixedContentSource("http://cdn.example.test/video.mp4", "https:"), true);
+  assert.equal(isMixedContentSource("https://cdn.example.test/video.mp4", "https:"), false);
+  assert.equal(isMixedContentSource("http://cdn.example.test/video.mp4", "http:"), false);
 });

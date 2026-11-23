@@ -922,6 +922,15 @@ select:focus-visible {
   font-size: 14px;
 }
 
+.channel-player__mixed-content-warning {
+  margin: 0;
+  padding: 14px 20px;
+  border-top: 1px solid rgba(255, 185, 193, 0.35);
+  color: #ffd5da;
+  background: rgba(91, 20, 33, 0.45);
+  font-size: 14px;
+}
+
 .channel-player:fullscreen .channel-player__notice {
   display: none;
 }

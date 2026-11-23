@@ -6,6 +6,7 @@ import {
   channelProfileInputSchema,
   isSafeHttpUrl,
   isSafeHttpsUrl,
+  normalizeChannelSourceUrl,
   normalizeSafeHttpUrl,
   slugifyChannelName,
 } from "@/lib/channel-schema";
@@ -795,6 +796,7 @@ export async function saveChannelAction(
     }
 
     let content: ChannelEmbedSource["content"];
+    let sourceUrl: string;
     if (draft.type === "iframe-code") {
       const iframe = parseEmbedIframeCode(draft.iframeCode);
       if (!iframe) {
@@ -803,6 +805,7 @@ export async function saveChannelAction(
           message: `O iframe da opção ${sources.length + 1} é inválido. Use somente src, title, allow e allowfullscreen, com src HTTP ou HTTPS.`,
         };
       }
+      sourceUrl = iframe.src;
       content = {
         src: iframe.src,
         ...(iframe.title ? { title: iframe.title } : {}),
@@ -817,7 +820,22 @@ export async function saveChannelAction(
           message: `Informe uma URL HTTP ou HTTPS válida na opção ${sources.length + 1}, sem usuário ou senha.`,
         };
       }
+      sourceUrl = url;
       content = { url };
+    }
+
+    const normalizedSourceUrl = normalizeChannelSourceUrl(sourceUrl, draft.type);
+    const isUnchangedLegacyHttpSource =
+      previous?.type === draft.type &&
+      getChannelEmbedSourceUrl(previous) === sourceUrl &&
+      sourceUrl.toLowerCase().startsWith("http://") &&
+      isSafeHttpUrl(sourceUrl);
+    if (!normalizedSourceUrl && !isUnchangedLegacyHttpSource) {
+      const message =
+        draft.type === "iframe-url" || draft.type === "iframe-code"
+          ? `Páginas incorporadas precisam usar uma URL HTTPS válida na opção ${sources.length + 1}.`
+          : `Informe uma URL HTTP ou HTTPS válida na opção ${sources.length + 1}, sem usuário ou senha.`;
+      return { success: false, message };
     }
 
     const unchanged = previous && previous.type === draft.type &&

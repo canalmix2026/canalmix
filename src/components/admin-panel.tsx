@@ -274,7 +274,7 @@ function ChannelForm({
         <span className="channel-form__section-label">Opções de transmissão</span>
         <p className="channel-form__hint">
           Cada opção mantém seu próprio tipo, endereço e estado de visibilidade.
-          Se uma página HTTP for incorporada quando o CanalMix estiver em HTTPS, o navegador poderá bloqueá-la como conteúdo inseguro.
+          Vídeos diretos e manifestos M3U8/MPD aceitam HTTP ou HTTPS; páginas incorporadas precisam usar HTTPS.
         </p>
         {embedSources.length > 1 && (
           <p className="channel-form__hint">Arraste pela alça ou use as setas para mudar a ordem das opções.</p>
@@ -367,7 +367,11 @@ function ChannelForm({
                       autoComplete="url"
                       id={`channel-embed-${source.id}`}
                       onChange={(event) => updateOption(index, { url: event.currentTarget.value })}
-                      placeholder="https://"
+                      placeholder={
+                        source.type === "direct-url" || source.type === "mpeg-dash"
+                          ? "https:// ou http://"
+                          : "https://"
+                      }
                       required
                       type="url"
                       value={source.url}
@@ -385,9 +389,20 @@ function ChannelForm({
                     ><X aria-hidden="true" size={18} /></button>
                   )}
                 </div>
+                <p className="channel-form__hint">
+                  {source.type === "direct-url"
+                    ? "Arquivos de vídeo compatíveis usam reprodução nativa; URLs M3U8 usam o player HLS."
+                    : source.type === "mpeg-dash"
+                      ? "Manifestos MPD são reproduzidos com dash.js."
+                      : source.type === "iframe-code"
+                        ? "O código é analisado e somente o endereço e as permissões compatíveis são usados."
+                        : "Use esta opção para uma página de player incorporável."}
+                </p>
                 {isHttp && (
                   <p className="channel-form__hint" role="status">
-                    Esta URL usa HTTP. Em uma página HTTPS, o navegador pode bloquear o player por conteúdo misto.
+                    {source.type === "iframe-url" || source.type === "iframe-code"
+                      ? "Páginas incorporadas precisam usar HTTPS."
+                      : "Esta fonte usa HTTP. Se o navegador bloquear a reprodução em uma página HTTPS, a origem precisa oferecer HTTPS."}
                   </p>
                 )}
               </div>
@@ -449,7 +464,9 @@ function ChannelForm({
               />
             )}
             {preview.url.toLowerCase().startsWith("http://") && (
-              <p className="channel-player__notice">Uma página HTTP pode ser bloqueada pelo navegador como conteúdo inseguro quando o CanalMix estiver em HTTPS.</p>
+              <p className="channel-player__mixed-content-warning" role="status">
+                Esta opção usa HTTP. Se o navegador bloqueá-la como conteúdo misto em uma página HTTPS, a origem precisa oferecer HTTPS.
+              </p>
             )}
             <p className="channel-player__notice">Se o player não iniciar, o provedor pode bloquear a incorporação ou a reprodução.</p>
           </section>

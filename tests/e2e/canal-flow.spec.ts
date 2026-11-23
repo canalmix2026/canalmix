@@ -292,6 +292,44 @@ test.afterAll(async () => {
   }
 });
 
+test("salva e reproduz uma fonte de vídeo HTTP no player nativo", async ({ page }) => {
+  await signIn(page, adminUser);
+
+  const channelName = "TESTE Vídeo HTTP CanalMix " + crypto.randomUUID().slice(0, 8);
+  const videoUrl = "http://video.canalmix.test/clip.mp4";
+  await page.route(videoUrl, (route) => route.abort());
+  await page.getByRole("button", { name: "Adicionar canal" }).click();
+  await page.getByLabel("Nome do canal").fill(channelName);
+  await page.getByLabel("Categoria", { exact: true }).selectOption("canais-abertos");
+  await page.getByLabel("Tipo da opção 1", { exact: true }).selectOption("direct-url");
+  await page.getByLabel("Opção 1", { exact: true }).fill(videoUrl);
+  await page.getByRole("button", { name: "Salvar canal" }).click();
+  await expect(page.getByText(channelName)).toBeVisible();
+
+  const { data: savedChannel, error } = await adminClient
+    .from("channels")
+    .select("id, slug, embed_urls, embed_sources")
+    .eq("name", channelName)
+    .maybeSingle();
+  expect(error).toBeNull();
+  expect(savedChannel).not.toBeNull();
+  if (!savedChannel) return;
+  channelIds.push(savedChannel.id);
+  expect(savedChannel.embed_urls).toEqual([videoUrl]);
+  const source = (savedChannel.embed_sources as { type: string; content: { url: string } }[])[0];
+  expect(source).toMatchObject({ type: "direct-url", content: { url: videoUrl } });
+
+  await page.getByRole("button", { name: "Publicar " + channelName }).click();
+  await expect(
+    page.getByRole("article").filter({ hasText: channelName }).locator(".status-pill"),
+  ).toHaveText("Publicado");
+  await page.goto("/canais/" + savedChannel.slug);
+  await expect(page.getByLabel("Vídeo do canal " + channelName)).toHaveAttribute(
+    "src",
+    videoUrl,
+  );
+});
+
 test("players externos podem abrir pop-ups necessários", async ({
   page,
   context,

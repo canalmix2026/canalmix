@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { EmbedSourceType } from "@/lib/channel-embed-sources";
 
 export function isSafeHttpsUrl(value: string) {
   try {
@@ -33,6 +34,25 @@ export function normalizeSafeHttpUrl(value: string) {
 
 export function isSafeHttpUrl(value: string) {
   return normalizeSafeHttpUrl(value) !== null;
+}
+
+export function normalizeChannelSourceUrl(
+  value: string,
+  sourceType: EmbedSourceType,
+) {
+  const normalized = normalizeSafeHttpUrl(value);
+  if (!normalized) {
+    return null;
+  }
+
+  if (
+    (sourceType === "iframe-url" || sourceType === "iframe-code") &&
+    !isSafeHttpsUrl(normalized)
+  ) {
+    return null;
+  }
+
+  return normalized;
 }
 
 const httpsUrl = z
